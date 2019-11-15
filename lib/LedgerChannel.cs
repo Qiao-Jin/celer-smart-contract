@@ -5,35 +5,35 @@ public class LedgerChannel
 {
     public delegate object DynamicCallContract(string method, object[] args);
 
-    public static BigInteger getSettleFinalizedTime(LedgerStruct.Channel _c)
+    public static BigInteger getSettleFinalizedTimeInner(LedgerStruct.Channel _c)
     {
         return _c.settleFinalizedTime;
     }
 
-    public static byte[] getTokenContract(LedgerStruct.Channel _c)
+    public static byte[] getTokenContractInner(LedgerStruct.Channel _c)
     {
         PbEntity.TokenInfo tokenInfo = _c.token;
         BasicMethods.assert(BasicMethods._isLegalAddress(tokenInfo.address), "address is illegal");
         return tokenInfo.address;
     }
 
-    public static byte getTokenType(LedgerStruct.Channel _c)
+    public static byte getTokenTypeInner(LedgerStruct.Channel _c)
     {
         PbEntity.TokenInfo tokenInfo = _c.token;
         return tokenInfo.tokenType;
     }
 
-    public static byte getChannelStatus(LedgerStruct.Channel _c)
+    public static byte getChannelStatusInner(LedgerStruct.Channel _c)
     {
         return _c.status;
     }
 
-    public static BigInteger getCooperativeWithdrawSeqNum(LedgerStruct.Channel _c)
+    public static BigInteger getCooperativeWithdrawSeqNumInner(LedgerStruct.Channel _c)
     {
         return _c.cooperativeWithdrawSeqNum;
     }
 
-    public static BigInteger getTotalBalance(LedgerStruct.Channel _c)
+    public static BigInteger getTotalBalanceInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -41,7 +41,7 @@ public class LedgerChannel
         return peer0.deposit + peer1.deposit - peer0.withdrawal - peer1.withdrawal;
     }
 
-    public static LedgerStruct.BalanceMap getBalanceMap(LedgerStruct.Channel _c)
+    public static LedgerStruct.BalanceMap getBalanceMapInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -59,7 +59,7 @@ public class LedgerChannel
         return balanceMap;
     }
 
-    public static LedgerStruct.ChannelMigrationArgs getChannelMigrationArgs(LedgerStruct.Channel _c)
+    public static LedgerStruct.ChannelMigrationArgs getChannelMigrationArgsInner(LedgerStruct.Channel _c)
     {
         LedgerStruct.ChannelMigrationArgs channelMigrationArgs = new LedgerStruct.ChannelMigrationArgs();
         channelMigrationArgs.disputeTimeout = _c.disputeTimeout;
@@ -70,7 +70,7 @@ public class LedgerChannel
         return channelMigrationArgs;
     }
 
-    public static LedgerStruct.PeersMigrationInfo getPeersMigrationInfo(LedgerStruct.Channel _c)
+    public static LedgerStruct.PeersMigrationInfo getPeersMigrationInfoInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -102,17 +102,17 @@ public class LedgerChannel
         return peersMigrationInfo;
     }
 
-    public static BigInteger getDisputeTimeout(LedgerStruct.Channel _c)
+    public static BigInteger getDisputeTimeoutInner(LedgerStruct.Channel _c)
     {
         return _c.disputeTimeout;
     }
 
-    public static byte[] getMigratedTo(LedgerStruct.Channel _c)
+    public static byte[] getMigratedToInner(LedgerStruct.Channel _c)
     {
         return _c.migratedTo;
     }
 
-    public static LedgerStruct.StateSeqNumMap getStateSeqNumMap(LedgerStruct.Channel _c)
+    public static LedgerStruct.StateSeqNumMap getStateSeqNumMapInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -130,7 +130,7 @@ public class LedgerChannel
         return stateSeqNumMap;
     }
 
-    public static LedgerStruct.TransferOutMap getTransferOutMap(LedgerStruct.Channel _c)
+    public static LedgerStruct.TransferOutMap getTransferOutMapInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -148,7 +148,7 @@ public class LedgerChannel
         return transferOutMap;
     }
 
-    public static LedgerStruct.NextPayIdListHashMap getNextPayIdListHashMap(LedgerStruct.Channel _c)
+    public static LedgerStruct.NextPayIdListHashMap getNextPayIdListHashMapInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -166,7 +166,7 @@ public class LedgerChannel
         return nextPayIdListHashMap;
     }
 
-    public static LedgerStruct.LastPayResolveDeadlineMap getLastPayResolveDeadlineMap(LedgerStruct.Channel _c)
+    public static LedgerStruct.LastPayResolveDeadlineMap getLastPayResolveDeadlineMapInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -184,7 +184,7 @@ public class LedgerChannel
         return lastPayResolveDeadlineMap;
     }
 
-    public static LedgerStruct.PendingPayOutMap getPendingPayOutMap(LedgerStruct.Channel _c)
+    public static LedgerStruct.PendingPayOutMap getPendingPayOutMapInner(LedgerStruct.Channel _c)
     {
         BasicMethods.assert(_c.peerProfiles.Length == 2, "Illegal peerProfiles length");
         LedgerStruct.PeerProfile peer0 = _c.peerProfiles[0];
@@ -202,7 +202,7 @@ public class LedgerChannel
         return pendingPayOutMap;
     }
 
-    public static LedgerStruct.WithdrawIntent getWithdrawIntent(LedgerStruct.Channel _c)
+    public static LedgerStruct.WithdrawIntent getWithdrawIntentInner(LedgerStruct.Channel _c)
     {
         return _c.withdrawIntent;
     }
@@ -343,7 +343,7 @@ public class LedgerChannel
         byte rid = _getPeerId(_c, _receiver);
         LedgerStruct.PeerProfile peerProfile = _c.peerProfiles[rid];
         peerProfile.withdrawal = peerProfile.withdrawal + _amount;
-        BasicMethods.assert(getTotalBalance(_c) >= 0, "Total balance is negative");
+        BasicMethods.assert(getTotalBalanceInner(_c) >= 0, "Total balance is negative");
         return _c;
     }
 }

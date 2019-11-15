@@ -138,8 +138,8 @@ public class LedgerOperation : SmartContract
         return false;
     }*/
 
-    [DisplayName("openChannel")]
-    public static bool openChannel(LedgerStruct.Ledger _self, byte[] _openRequest, BigInteger _value, bool _balanceLimited)
+    [DisplayName("openChannelInner")]
+    public static bool openChannelInner(LedgerStruct.Ledger _self, byte[] _openRequest, BigInteger _value, bool _balanceLimited)
     {
         BasicMethods.assert(_value >= 0, "value is illegal");
         PbChain.OpenChannelRequest openRequest = (PbChain.OpenChannelRequest)Neo.SmartContract.Framework.Helper.Deserialize(_openRequest);
@@ -186,15 +186,15 @@ public class LedgerOperation : SmartContract
 
         // if total deposit is larger than 0
         if (_balanceLimited)
-            BasicMethods.assert(amtSum <= LedgerBalanceLimit.getBalanceLimit(token.address), "Balance exceeds limit");
+            BasicMethods.assert(amtSum <= LedgerBalanceLimit.getBalanceLimitInner(token.address), "Balance exceeds limit");
 
         //Pending
         LedgerStruct.setChannelMap(channelInfo.channelId, c);
         return true;
     }
 
-    [DisplayName("deposit")]
-    public static bool deposit(LedgerStruct.Ledger _self, byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, BigInteger _value, bool _balanceLimited)
+    [DisplayName("depositInner")]
+    public static bool depositInner(LedgerStruct.Ledger _self, byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, BigInteger _value, bool _balanceLimited)
     {
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId is illegal");
         BasicMethods.assert(BasicMethods._isLegalAddress(_receiver), "_receiver is illegal");
@@ -207,8 +207,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("snapshotStates")]
-    public static bool snapshotStates(LedgerStruct.Ledger _self, byte[] _signedSimplexStateArray)
+    [DisplayName("snapshotStatesInner")]
+    public static bool snapshotStatesInner(LedgerStruct.Ledger _self, byte[] _signedSimplexStateArray)
     {
         PbChain.SignedSimplexStateArray signedSimplexStateArray = (PbChain.SignedSimplexStateArray)Neo.SmartContract.Framework.Helper.Deserialize(_signedSimplexStateArray);
         PbChain.SignedSimplexState[] signedSimplexStates = signedSimplexStateArray.signedSimplexStates;
@@ -269,8 +269,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("intendWithdraw")]
-    public static bool intendWithdraw(byte[] _sender, LedgerStruct.Ledger _self, byte[] _channelId, BigInteger _amount, byte[] _recipientChannelId)
+    [DisplayName("intendWithdrawInner")]
+    public static bool intendWithdrawInner(byte[] _sender, LedgerStruct.Ledger _self, byte[] _channelId, BigInteger _amount, byte[] _recipientChannelId)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "sender illegal");
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
@@ -298,8 +298,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("confirmWithdraw")]
-    public static bool confirmWithdraw(LedgerStruct.Ledger _self, byte[] _channelId, bool _balanceLimited)
+    [DisplayName("confirmWithdrawInner")]
+    public static bool confirmWithdrawInner(LedgerStruct.Ledger _self, byte[] _channelId, bool _balanceLimited)
     {
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
         LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
@@ -338,15 +338,15 @@ public class LedgerOperation : SmartContract
         BasicMethods.assert(amount <= withdrawLimit, "Exceed withdraw limit");
 
         c = LedgerChannel._addWithdrawal(c, receiver, amount);
-        LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMap(c);
+        LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMapInner(c);
         ConfirmWithdrawEvent(_channelId, amount, receiver, recipientChannelId, balanceMap.deposits, balanceMap.withdrawals);
         LedgerStruct.setChannelMap(_channelId, c);
         _withdrawFunds(_self, _channelId, receiver, amount, recipientChannelId, _balanceLimited);
         return true;
     }
 
-    [DisplayName("vetoWithdraw")]
-    public static bool vetoWithdraw(byte[] _sender, LedgerStruct.Ledger _self, byte[] _channelId)
+    [DisplayName("vetoWithdrawInner")]
+    public static bool vetoWithdrawInner(byte[] _sender, LedgerStruct.Ledger _self, byte[] _channelId)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "sender illegal");
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
@@ -367,8 +367,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("cooperativeWithdraw")]
-    public static bool cooperativeWithdraw(LedgerStruct.Ledger _self, byte[] _cooperativeWithdrawRequest, bool _balanceLimited)
+    [DisplayName("cooperativeWithdrawInner")]
+    public static bool cooperativeWithdrawInner(LedgerStruct.Ledger _self, byte[] _cooperativeWithdrawRequest, bool _balanceLimited)
     {
         PbChain.CooperativeWithdrawRequest cooperativeWithdrawRequest =
             (PbChain.CooperativeWithdrawRequest)Neo.SmartContract.Framework.Helper.Deserialize(_cooperativeWithdrawRequest);
@@ -400,7 +400,7 @@ public class LedgerOperation : SmartContract
         // this implicitly require receiver be a peer
         c = LedgerChannel._addWithdrawal(c, receiver, amount);
         LedgerStruct.setChannelMap(channelId, c);
-        LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMap(c);
+        LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMapInner(c);
         CooperativeWithdrawEvent(
             channelId,
             amount,
@@ -415,8 +415,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("intendSettle")]
-    public static bool intendSettle(byte[] _sender, LedgerStruct.Ledger _self, byte[] _signedSimplexStateArray)
+    [DisplayName("intendSettleInner")]
+    public static bool intendSettleInner(byte[] _sender, LedgerStruct.Ledger _self, byte[] _signedSimplexStateArray)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "sender illegal");
         PbChain.SignedSimplexStateArray signedSimplexStateArray =
@@ -539,8 +539,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("clearPays")]
-    public static bool clearPays(LedgerStruct.Ledger _self, byte[] _channelId, byte[] _peerFrom, byte[] _payIdList)
+    [DisplayName("clearPaysInner")]
+    public static bool clearPaysInner(LedgerStruct.Ledger _self, byte[] _channelId, byte[] _peerFrom, byte[] _payIdList)
     {
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
         BasicMethods.assert(BasicMethods._isLegalAddress(_peerFrom), "_peerFrom illegal");
@@ -564,8 +564,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("confirmSettle")]
-    public static bool confirmSettle(LedgerStruct.Ledger _self, byte[] _channelId)
+    [DisplayName("confirmSettleInner")]
+    public static bool confirmSettleInner(LedgerStruct.Ledger _self, byte[] _channelId)
     {
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
 
@@ -629,8 +629,8 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("cooperativeSettle")]
-    public static bool cooperativeSettle(LedgerStruct.Ledger _self, byte[] _settleRequest)
+    [DisplayName("cooperativeSettleInner")]
+    public static bool cooperativeSettleInner(LedgerStruct.Ledger _self, byte[] _settleRequest)
     {
         PbChain.CooperativeSettleRequest settleRequest =
             (PbChain.CooperativeSettleRequest)Neo.SmartContract.Framework.Helper.Deserialize(_settleRequest);
@@ -672,7 +672,7 @@ public class LedgerOperation : SmartContract
         );
 
         BigInteger[] settleBalance = { settleBalance0.amt, settleBalance1.amt };
-        BasicMethods.assert(settleBalance[0] + settleBalance[1] == LedgerChannel.getTotalBalance(c), "Balance sum mismatch");
+        BasicMethods.assert(settleBalance[0] + settleBalance[1] == LedgerChannel.getTotalBalanceInner(c), "Balance sum mismatch");
 
         c = _updateChannelStatus(_self, c, channelStatus.Closed);
         LedgerStruct.setChannelMap(channelId, c);
@@ -684,20 +684,20 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    [DisplayName("getChannelStatusNum")]
-    public static BigInteger getChannelStatusNum(LedgerStruct.Ledger _self, BigInteger _channelStatus)
+    [DisplayName("getChannelStatusNumInner")]
+    public static BigInteger getChannelStatusNumInner(LedgerStruct.Ledger _self, BigInteger _channelStatus)
     {
         return LedgerStruct.getChannelStatusNums(_channelStatus);
     }
 
-    [DisplayName("getPayRegistry")]
-    public static byte[] getPayRegistry(LedgerStruct.Ledger _self)
+    [DisplayName("getPayRegistryInner")]
+    public static byte[] getPayRegistryInner(LedgerStruct.Ledger _self)
     {
         return _self.payRegistry;
     }
 
-    [DisplayName("getCelerWallet")]
-    public static byte[] getCelerWallet(LedgerStruct.Ledger _self)
+    [DisplayName("getCelerWalletInner")]
+    public static byte[] getCelerWalletInner(LedgerStruct.Ledger _self)
     {
         return _self.celerWallet;
     }
@@ -746,13 +746,13 @@ public class LedgerOperation : SmartContract
         {
             PbEntity.TokenInfo tokenInfo = c.token;
             byte[] address = tokenInfo.address;
-            BasicMethods.assert(_amount + LedgerChannel.getTotalBalance(c) <= LedgerBalanceLimit.getBalanceLimit(address), "Balance exceeds limit");
+            BasicMethods.assert(_amount + LedgerChannel.getTotalBalanceInner(c) <= LedgerBalanceLimit.getBalanceLimitInner(address), "Balance exceeds limit");
         }
 
         LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
         LedgerStruct.PeerProfile peerProfile = peerProfiles[rid];
         peerProfile.deposit = peerProfile.deposit + _amount;
-        LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMap(c);
+        LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMapInner(c);
         LedgerStruct.setChannelMap(_channelId, c);
         DepositEvent(_channelId, balanceMap.peerAddrs, balanceMap.deposits, balanceMap.withdrawals);
         return true;

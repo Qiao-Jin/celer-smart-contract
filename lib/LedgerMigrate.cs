@@ -14,8 +14,8 @@ public class LedgerMigrate : SmartContract
     [DisplayName("MigrateChannelFromEvent")]
     public static event Action<byte[], byte[]> MigrateChannelFromEvent;
 
-    [DisplayName("migrateChannelTo")]
-    public static byte[] migrateChannelTo(byte[] sender, LedgerStruct.Ledger _self, byte[] _migrationRequest)
+    [DisplayName("migrateChannelToInner")]
+    public static byte[] migrateChannelToInner(byte[] sender, LedgerStruct.Ledger _self, byte[] _migrationRequest)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(sender), "sender illegal");
         PbChain.ChannelMigrationRequest migrationRequest =
@@ -54,8 +54,8 @@ public class LedgerMigrate : SmartContract
         return channelId;
     }
 
-    [DisplayName("migrateChannelFrom")]
-    public static bool migrateChannelFrom(byte[] sender, LedgerStruct.Ledger _self, byte[] _fromLedgerAddr, byte[] _migrationRequest)
+    [DisplayName("migrateChannelFromInner")]
+    public static bool migrateChannelFromInner(byte[] sender, LedgerStruct.Ledger _self, byte[] _fromLedgerAddr, byte[] _migrationRequest)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(sender), "sender illegal");
         BasicMethods.assert(BasicMethods._isLegalAddress(_fromLedgerAddr), "_fromLedgerAddr illegal");

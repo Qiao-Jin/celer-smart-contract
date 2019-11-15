@@ -9,8 +9,8 @@ public class LedgerBalanceLimit
 
     private static readonly byte[] BalanceLimitsEnabledPrefix = "balanceLimitsEnabled".AsByteArray();
 
-    [DisplayName("setBalanceLimits")]
-    public static object setBalanceLimits(byte[][] tokenAddrs, BigInteger[] limits)
+    [DisplayName("setBalanceLimitsInner")]
+    public static object setBalanceLimitsInner(byte[][] tokenAddrs, BigInteger[] limits)
     {
         BasicMethods.assert(tokenAddrs.Length == limits.Length, "Lengths do not match");
         for (int i = 0; i < tokenAddrs.Length; i++)
@@ -21,29 +21,29 @@ public class LedgerBalanceLimit
         return true;
     }
 
-    [DisplayName("disableBalanceLimits")]
-    public static object disableBalanceLimits()
+    [DisplayName("disableBalanceLimitsInner")]
+    public static object disableBalanceLimitsInner()
     {
         Storage.Put(Storage.CurrentContext, BalanceLimitsEnabledPrefix, 1);
         return true;
     }
 
-    [DisplayName("enableBalanceLimits")]
-    public static object enableBalanceLimits()
+    [DisplayName("enableBalanceLimitsInner")]
+    public static object enableBalanceLimitsInner()
     {
         Storage.Put(Storage.CurrentContext, BalanceLimitsEnabledPrefix, 0);
         return true;
     }
 
-    [DisplayName("getBalanceLimit")]
-    public static BigInteger getBalanceLimit(byte[] tokenAddr)
+    [DisplayName("getBalanceLimitInner")]
+    public static BigInteger getBalanceLimitInner(byte[] tokenAddr)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(tokenAddr), "Token address is illegal");
         return Storage.Get(Storage.CurrentContext, BalanceLimitsPrefix.Concat(tokenAddr)).ToBigInteger();
     }
 
-    [DisplayName("getBalanceLimitsEnabled")]
-    public static bool getBalanceLimitsEnabled()
+    [DisplayName("getBalanceLimitsEnabledInner")]
+    public static bool getBalanceLimitsEnabledInner()
     {
         byte[] result = Storage.Get(Storage.CurrentContext, BalanceLimitsEnabledPrefix);
         if (result == null) return false;

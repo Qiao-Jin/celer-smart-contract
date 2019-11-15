@@ -297,7 +297,7 @@ namespace CelerLedger
             ledger.payRegistry = _payRegistryHash;
             ledger.celerWallet = _celerWalletHash;
             setLedger(ledger);
-            LedgerBalanceLimit.enableBalanceLimits();
+            LedgerBalanceLimit.enableBalanceLimitsInner();
             return true;
         }
 
@@ -305,7 +305,7 @@ namespace CelerLedger
         public static bool setBalanceLimits(byte[][] _tokenAddrs, BigInteger[] _limits)
         {
             if (!onlyOwner()) return false;
-            LedgerBalanceLimit.setBalanceLimits(_tokenAddrs, _limits);
+            LedgerBalanceLimit.setBalanceLimitsInner(_tokenAddrs, _limits);
             return true;
         }
 
@@ -313,14 +313,14 @@ namespace CelerLedger
         public static bool disableBalanceLimits()
         {
             if (!onlyOwner()) return false;
-            LedgerBalanceLimit.disableBalanceLimits();
+            LedgerBalanceLimit.disableBalanceLimitsInner();
             return true;
         }
 
         [DisplayName("enableBalanceLimits")]
         public static bool enableBalanceLimits()
         {
-            LedgerBalanceLimit.enableBalanceLimits();
+            LedgerBalanceLimit.enableBalanceLimitsInner();
             return true;
         }
 
@@ -328,7 +328,7 @@ namespace CelerLedger
         public static bool openChannel(byte[] _openRequest, BigInteger _value)
         {
             LedgerStruct.Ledger ledger = getLedger();
-            LedgerOperation.openChannel(ledger, _openRequest, _value, LedgerBalanceLimit.getBalanceLimitsEnabled());
+            LedgerOperation.openChannelInner(ledger, _openRequest, _value, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
@@ -336,7 +336,7 @@ namespace CelerLedger
         public static bool deposit(byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, BigInteger _value)
         {
             LedgerStruct.Ledger ledger = getLedger();
-            LedgerOperation.deposit(ledger, _channelId, _receiver, _transferFromAmount, _value, LedgerBalanceLimit.getBalanceLimitsEnabled());
+            LedgerOperation.depositInner(ledger, _channelId, _receiver, _transferFromAmount, _value, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
@@ -347,10 +347,10 @@ namespace CelerLedger
                 _channelIds.Length == _receivers.Length && _receivers.Length == _transferFromAmounts.Length && _transferFromAmounts.Length == _values.Length,
                 "Lengths do not match"
                 );
-            bool balanceLimited = LedgerBalanceLimit.getBalanceLimitsEnabled();
+            bool balanceLimited = LedgerBalanceLimit.getBalanceLimitsEnabledInner();
             for (int i = 0; i < _channelIds.Length; i++)
             {
-                LedgerOperation.deposit(getLedger(), _channelIds[i], _receivers[i], _transferFromAmounts[i], _values[i], balanceLimited);
+                LedgerOperation.depositInner(getLedger(), _channelIds[i], _receivers[i], _transferFromAmounts[i], _values[i], balanceLimited);
             }
             return true;
         }
@@ -358,77 +358,77 @@ namespace CelerLedger
         [DisplayName("snapshotStates")]
         public static bool snapshotStates(byte[] _signedSimplexStateArray)
         {
-            LedgerOperation.snapshotStates(getLedger(), _signedSimplexStateArray);
+            LedgerOperation.snapshotStatesInner(getLedger(), _signedSimplexStateArray);
             return true;
         }
 
         [DisplayName("intendWithdraw")]
         public static bool intendWithdraw(byte[] _channelId, BigInteger _amount, byte[] _recipientChannelId, byte[] _sender)
         {
-            LedgerOperation.intendWithdraw(_sender, getLedger(), _channelId, _amount, _recipientChannelId);
+            LedgerOperation.intendWithdrawInner(_sender, getLedger(), _channelId, _amount, _recipientChannelId);
             return true;
         }
 
         [DisplayName("confirmWithdraw")]
         public static bool confirmWithdraw(byte[] _channelId)
         {
-            LedgerOperation.confirmWithdraw(getLedger(), _channelId, LedgerBalanceLimit.getBalanceLimitsEnabled());
+            LedgerOperation.confirmWithdrawInner(getLedger(), _channelId, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
         [DisplayName("vetoWithdraw")]
         public static bool vetoWithdraw(byte[] _channelId, byte[] _sender)
         {
-            LedgerOperation.vetoWithdraw(_sender, getLedger(), _channelId);
+            LedgerOperation.vetoWithdrawInner(_sender, getLedger(), _channelId);
             return true;
         }
 
         [DisplayName("cooperativeWithdraw")]
         public static bool cooperativeWithdraw(byte[] _cooperativeWithdrawRequest)
         {
-            LedgerOperation.cooperativeWithdraw(getLedger(), _cooperativeWithdrawRequest, LedgerBalanceLimit.getBalanceLimitsEnabled());
+            LedgerOperation.cooperativeWithdrawInner(getLedger(), _cooperativeWithdrawRequest, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
         [DisplayName("intendSettle")]
         public static bool intendSettle(byte[] _signedSimplexStateArray, byte[] _sender)
         {
-            LedgerOperation.intendSettle(_sender, getLedger(), _signedSimplexStateArray);
+            LedgerOperation.intendSettleInner(_sender, getLedger(), _signedSimplexStateArray);
             return true;
         }
 
         [DisplayName("clearPays")]
         public static bool clearPays(byte[] _channelId, byte[] _peerFrom, byte[] _payIdList)
         {
-            LedgerOperation.clearPays(getLedger(), _channelId, _peerFrom, _payIdList);
+            LedgerOperation.clearPaysInner(getLedger(), _channelId, _peerFrom, _payIdList);
             return true;
         }
 
         [DisplayName("confirmSettle")]
         public static bool confirmSettle(byte[] _channelId)
         {
-            LedgerOperation.confirmSettle(getLedger(), _channelId);
+            LedgerOperation.confirmSettleInner(getLedger(), _channelId);
             return true;
         }
 
         [DisplayName("cooperativeSettle")]
         public static bool cooperativeSettle(byte[] _settleRequest)
         {
-            LedgerOperation.cooperativeSettle(getLedger(), _settleRequest);
+            LedgerOperation.cooperativeSettleInner(getLedger(), _settleRequest);
             return true;
         }
 
         [DisplayName("migrateChannelTo")]
         public static bool migrateChannelTo(byte[] _migrationRequest, byte[] sender)
         {
-            LedgerMigrate.migrateChannelTo(sender, getLedger(), _migrationRequest);
+            LedgerMigrate.migrateChannelToInner(sender, getLedger(), _migrationRequest);
             return true;
         }
 
         [DisplayName("migrateChannelFrom")]
         public static bool migrateChannelFrom(byte[] _fromLedgerAddr, byte[] _migrationRequest, byte[] sender)
         {
-            LedgerMigrate.migrateChannelFrom(sender, getLedger(), _fromLedgerAddr, _migrationRequest);
+            LedgerMigrate.migrateChannelFromInner(sender, getLedger(), _fromLedgerAddr, _migrationRequest);
             return true;
         }
 
@@ -437,7 +437,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getSettleFinalizedTime(c);
+            return LedgerChannel.getSettleFinalizedTimeInner(c);
         }
 
         [DisplayName("getTokenContract")]
@@ -445,7 +445,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getTokenContract(c);
+            return LedgerChannel.getTokenContractInner(c);
         }
 
         [DisplayName("getTokenType")]
@@ -453,7 +453,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getTokenType(c);
+            return LedgerChannel.getTokenTypeInner(c);
         }
 
         [DisplayName("getChannelStatus")]
@@ -461,7 +461,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getChannelStatus(c);
+            return LedgerChannel.getChannelStatusInner(c);
         }
 
         [DisplayName("getCooperativeWithdrawSeqNum")]
@@ -469,7 +469,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getCooperativeWithdrawSeqNum(c);
+            return LedgerChannel.getCooperativeWithdrawSeqNumInner(c);
         }
 
         [DisplayName("getTotalBalance")]
@@ -477,7 +477,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getTotalBalance(c);
+            return LedgerChannel.getTotalBalanceInner(c);
         }
 
         [DisplayName("getBalanceMap")]
@@ -485,7 +485,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getBalanceMap(c);
+            return LedgerChannel.getBalanceMapInner(c);
         }
 
         [DisplayName("getChannelMigrationArgs")]
@@ -493,7 +493,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getChannelMigrationArgs(c);
+            return LedgerChannel.getChannelMigrationArgsInner(c);
         }
 
         [DisplayName("getPeersMigrationInfo")]
@@ -501,7 +501,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getPeersMigrationInfo(c);
+            return LedgerChannel.getPeersMigrationInfoInner(c);
         }
 
         [DisplayName("getDisputeTimeout")]
@@ -509,7 +509,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getDisputeTimeout(c);
+            return LedgerChannel.getDisputeTimeoutInner(c);
         }
 
         [DisplayName("getMigratedTo")]
@@ -517,7 +517,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getMigratedTo(c);
+            return LedgerChannel.getMigratedToInner(c);
         }
 
         [DisplayName("getStateSeqNumMap")]
@@ -525,7 +525,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getStateSeqNumMap(c);
+            return LedgerChannel.getStateSeqNumMapInner(c);
         }
 
         [DisplayName("getTransferOutMap")]
@@ -533,7 +533,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getTransferOutMap(c);
+            return LedgerChannel.getTransferOutMapInner(c);
         }
 
         [DisplayName("getNextPayIdListHashMap")]
@@ -541,7 +541,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getNextPayIdListHashMap(c);
+            return LedgerChannel.getNextPayIdListHashMapInner(c);
         }
 
         [DisplayName("getLastPayResolveDeadlineMap")]
@@ -549,7 +549,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getLastPayResolveDeadlineMap(c);
+            return LedgerChannel.getLastPayResolveDeadlineMapInner(c);
         }
 
         [DisplayName("getPendingPayOutMap")]
@@ -557,7 +557,7 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getPendingPayOutMap(c);
+            return LedgerChannel.getPendingPayOutMapInner(c);
         }
 
         [DisplayName("getWithdrawIntent")]
@@ -565,38 +565,38 @@ namespace CelerLedger
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-            return LedgerChannel.getWithdrawIntent(c);
+            return LedgerChannel.getWithdrawIntentInner(c);
         }
 
         [DisplayName("getChannelStatusNum")]
         public static BigInteger getChannelStatusNum(BigInteger _channelStatus)
         {
-            return LedgerOperation.getChannelStatusNum(getLedger(), _channelStatus);
+            return LedgerOperation.getChannelStatusNumInner(getLedger(), _channelStatus);
         }
 
         [DisplayName("getPayRegistry")]
         public static byte[] getPayRegistry()
         {
-            return LedgerOperation.getPayRegistry(getLedger());
+            return LedgerOperation.getPayRegistryInner(getLedger());
         }
 
         [DisplayName("getCelerWallet")]
         public static byte[] getCelerWallet()
         {
-            return LedgerOperation.getCelerWallet(getLedger());
+            return LedgerOperation.getCelerWalletInner(getLedger());
         }
 
         [DisplayName("getBalanceLimit")]
         public static BigInteger getBalanceLimit(byte[] _tokenAddr)
         {
             BasicMethods.assert(BasicMethods._isLegalAddress(_tokenAddr), "_tokenAddr illegal");
-            return LedgerBalanceLimit.getBalanceLimit(_tokenAddr);
+            return LedgerBalanceLimit.getBalanceLimitInner(_tokenAddr);
         }
 
-        [DisplayName("getBalanceLimit")]
+        [DisplayName("getBalanceLimitsEnabled")]
         public static bool getBalanceLimitsEnabled()
         {
-            return LedgerBalanceLimit.getBalanceLimitsEnabled();
+            return LedgerBalanceLimit.getBalanceLimitsEnabledInner();
         }
 
         private static bool onlyOwner()

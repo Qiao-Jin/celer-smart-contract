@@ -14,13 +14,13 @@ namespace CelerLedgerMock
 
         private static readonly byte[] tmpChannelIdSetHashKey = "tmpChannelIdSet".AsByteArray();
 
-        /*[DisplayName("OpenChannel")]
+        [DisplayName("OpenChannelEvent")]
         public static event Action<byte[], byte, byte[], byte[][], BigInteger[]> OpenChannelEvent;
 
-        [DisplayName("Deposit")]
+        [DisplayName("DepositEvent")]
         public static event Action<byte[], byte[][], BigInteger[], BigInteger[]> DepositEvent;
 
-        [DisplayName("SnapshotStates")]
+        [DisplayName("SnapshotStatesEvent")]
         public static event Action<byte[], BigInteger[]> SnapshotStatesEvent;
 
         private static LedgerStruct.Ledger getLedger()
@@ -52,7 +52,7 @@ namespace CelerLedgerMock
         private static void setTmpChannelIdSet(byte[][] value)
         {
             Storage.Put(Storage.CurrentContext, tmpChannelIdSetHashKey, Neo.SmartContract.Framework.Helper.Serialize(value));
-        }*/
+        }
 
         public static object Main(string operation, object[] args)
         {
@@ -116,7 +116,7 @@ namespace CelerLedgerMock
             return false;
         }
 
-        /*[DisplayName("init")]
+        [DisplayName("init")]
         public static bool init(byte[] _payRegistryHash, byte[] _celerWalletHash)
         {
             BasicMethods.assert(BasicMethods._isLegalAddress(_payRegistryHash), "Pay registry contract hash illegal");
@@ -126,7 +126,7 @@ namespace CelerLedgerMock
             ledger.payRegistry = _payRegistryHash;
             ledger.celerWallet = _celerWalletHash;
             setLedger(ledger);
-            LedgerBalanceLimit.enableBalanceLimits();
+            LedgerBalanceLimit.enableBalanceLimitsInner();
             return true;
         }
 
@@ -147,7 +147,7 @@ namespace CelerLedgerMock
 
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
             c.disputeTimeout = _disputeTimeout;
-            LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getChannelStatus();
+            LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
             c = LedgerOperation._updateChannelStatus(getLedger(), c, channelStatus.Operable);
             PbEntity.TokenInfo token = c.token;
             token.address = _tokenAddress;
@@ -191,7 +191,7 @@ namespace CelerLedgerMock
             return true;
         }
 
-        [DisplayName("deposit")]
+        /*[DisplayName("deposit")]
         public static bool deposit(byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, BigInteger _value)
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
