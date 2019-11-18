@@ -4,7 +4,7 @@ public class BasicMethods
 {
     private static readonly byte[] addressZero = Neo.SmartContract.Framework.Helper.ToScriptHash("Af4u5kSxcDrRmHPeA384SbF5BqHRFUiJGU");
 
-    private static readonly byte[] Admin = Neo.SmartContract.Framework.Helper.ToScriptHash("AFmseVrdL9f9oyCzZefL9tG6UbvhPbdYzM");
+    private static readonly byte[] Admin = Neo.SmartContract.Framework.Helper.ToScriptHash("Af4u5kSxcDrRmHPeA384SbF5BqHRFUiJGU");
 
     private static readonly int legalLength = 20;
 
