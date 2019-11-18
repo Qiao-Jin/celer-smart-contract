@@ -19,8 +19,8 @@ namespace AssetPool
         [DisplayName("approve")]
         public static event Action<byte[], byte[], BigInteger> Approved;
 
-        private static readonly string Name = "NEP5Pool";//¿Podría ser como un parámetro de inicialización?
-        private static readonly string Symbol = "NVP";//Eso también.
+        private static readonly string Name = "NEP5Pool";
+        private static readonly string Symbol = "NVP";
         private static readonly byte[] Admin = Helper.ToScriptHash("AFmseVrdL9f9oyCzZefL9tG6UbvhPbdYzM");
 
         private static readonly byte[] TotalSupplyKey = "total".AsByteArray();

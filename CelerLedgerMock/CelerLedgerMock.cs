@@ -808,7 +808,7 @@ namespace CelerLedgerMock
         {
             c.settleFinalizedTime = 0;
             LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
-            _updateChannelStatus(c, channelStatus.Operable);
+            c = _updateChannelStatus(c, channelStatus.Operable);
             LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
             LedgerStruct.PeerProfile peerProfile0 = peerProfiles[0];
             LedgerStruct.PeerProfile peerProfile1 = peerProfiles[1];

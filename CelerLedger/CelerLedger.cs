@@ -419,10 +419,9 @@ namespace CelerLedger
         }
 
         [DisplayName("migrateChannelTo")]
-        public static bool migrateChannelTo(byte[] _migrationRequest, byte[] sender)
+        public static byte[] migrateChannelTo(byte[] _migrationRequest, byte[] sender)
         {
-            LedgerMigrate.migrateChannelToInner(sender, getLedger(), _migrationRequest);
-            return true;
+            return LedgerMigrate.migrateChannelToInner(sender, getLedger(), _migrationRequest);
         }
 
         [DisplayName("migrateChannelFrom")]
