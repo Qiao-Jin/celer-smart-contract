@@ -2,9 +2,9 @@ using System;
 
 public class BasicMethods
 {
-    private static readonly byte[] addressZero = Neo.SmartContract.Framework.Helper.ToScriptHash("Af4u5kSxcDrRmHPeA384SbF5BqHRFUiJGU");
+    private static readonly byte[] addressZero = Neo.SmartContract.Framework.Helper.ToScriptHash("Ab5x97fSdMzddxnmWvDXaTJC51zkbNVp4n");
 
-    private static readonly byte[] Admin = Neo.SmartContract.Framework.Helper.ToScriptHash("Af4u5kSxcDrRmHPeA384SbF5BqHRFUiJGU");
+    private static readonly byte[] Admin = Neo.SmartContract.Framework.Helper.ToScriptHash("Ab5x97fSdMzddxnmWvDXaTJC51zkbNVp4n");
 
     private static readonly int legalLength = 20;
 
