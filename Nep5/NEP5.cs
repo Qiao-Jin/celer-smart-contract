@@ -16,7 +16,6 @@ namespace NEP5
         private static readonly BigInteger Factor = 100000000;
         private static readonly BigInteger Decimals = 8;
         private static readonly BigInteger InitialSupply = 100000000;
-        private static readonly byte[] Admin = Helper.ToScriptHash("AFmseVrdL9f9oyCzZefL9tG6UbvhPbdYzM");
 
         private static readonly byte[] TotalSupplyKey = "total".AsByteArray();
 
@@ -82,8 +81,8 @@ namespace NEP5
             BasicMethods.assert(totalSupply() == 0, "contract has already been initilaized");
             BigInteger supply = Factor * InitialSupply;
             Storage.Put(Storage.CurrentContext, TotalSupplyKey, supply);
-            Storage.Put(Storage.CurrentContext, BalancePrefix.Concat(Admin), supply);
-            Transferred(null, Admin, supply);
+            Storage.Put(Storage.CurrentContext, BalancePrefix.Concat(BasicMethods.getAdmin()), supply);
+            Transferred(null, BasicMethods.getAdmin(), supply);
             return true;
         }
 

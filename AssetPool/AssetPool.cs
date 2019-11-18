@@ -21,7 +21,7 @@ namespace AssetPool
 
         private static readonly string Name = "NEP5Pool";
         private static readonly string Symbol = "NVP";
-        private static readonly byte[] Admin = Helper.ToScriptHash("AFmseVrdL9f9oyCzZefL9tG6UbvhPbdYzM");
+        
 
         private static readonly byte[] TotalSupplyKey = "total".AsByteArray();
         private static readonly byte[] DecimalsKey = "decimals".AsByteArray();
@@ -145,7 +145,7 @@ namespace AssetPool
             BasicMethods.assert(decimals >= 0, "decimals is less than 0");
             BasicMethods.assert(BasicMethods._isLegalAddress(reversedCelerWalletHash), "celer wallet contract hash illegal");
 
-            BasicMethods.assert(Runtime.CheckWitness(Admin), "is not initialized by admin");
+            BasicMethods.assert(Runtime.CheckWitness(BasicMethods.getAdmin()), "is not initialized by admin");
 
             Storage.Put(Storage.CurrentContext, NEP5HashKey, reversedNEP5Hash);
             Storage.Put(Storage.CurrentContext, DecimalsKey, decimals);
