@@ -12,7 +12,6 @@ namespace PayResolver
     {
         public static readonly byte[] PayRegistryHashKey = "payRegistry".AsByteArray();
         public static readonly byte[] VirtResolverHashKey = "virtResolver".AsByteArray();
-        public delegate object DynamicCallContract(string method, object[] args);
 
         [DisplayName("resolvePayment")]
         public static event Action<byte[], BigInteger, BigInteger> ResolvePayment;
@@ -33,6 +32,10 @@ namespace PayResolver
                     return init(revPayRegistryAddr, revVirtResolverAddr);
                 }
                 if (operation == "getPayRegistryHash")
+                {
+                    return getPayRegistryHash();
+                }
+                if (operation == "getVirtResolverHash")
                 {
                     return getVirtResolverHash();
                 }
@@ -140,7 +143,7 @@ namespace PayResolver
             byte[] payId = _calculatePayId(_payHash, ExecutionEngine.ExecutingScriptHash);
 
             byte[] payRegistryHash = getPayRegistryHash();
-            DynamicCallContract dyncall = (DynamicCallContract)payRegistryHash.ToDelegate();
+            BasicMethods.DynamicCallContract dyncall = (BasicMethods.DynamicCallContract)payRegistryHash.ToDelegate();
             BigInteger[] res = (BigInteger[]) dyncall("getPayInfo", new object[] { payId });
             BigInteger currentAmt = res[0];
             BigInteger currentDeadline = res[1];
@@ -205,7 +208,7 @@ namespace PayResolver
                    )
                 {
                     byte[] booleanCondHash = _getCondAddress(cond);
-                    DynamicCallContract dyncall = (DynamicCallContract)booleanCondHash.ToDelegate();
+                    BasicMethods.DynamicCallContract dyncall = (BasicMethods.DynamicCallContract)booleanCondHash.ToDelegate();
                     BasicMethods.assert((bool)dyncall("isFinalized", new object[] { cond.argsQueryFinalization }), "Condition is not finalized");
                     bool outcome = (bool)dyncall("getOutcome", new object[] { cond.argsQueryOutcome });
                     if (!outcome){
@@ -251,7 +254,7 @@ namespace PayResolver
                    )
                 {
                     byte[] booleanCondHash = _getCondAddress(cond);
-                    DynamicCallContract dyncall = (DynamicCallContract)booleanCondHash.ToDelegate();
+                    BasicMethods.DynamicCallContract dyncall = (BasicMethods.DynamicCallContract)booleanCondHash.ToDelegate();
                     BasicMethods.assert((bool)dyncall("isFinalized", new object[] { cond.argsQueryFinalization }), "Condition is not finalized");
                     hasContractCond = true;
 
@@ -301,7 +304,7 @@ namespace PayResolver
                    )
                 {
                     byte[] numericCondHash = _getCondAddress(cond);
-                    DynamicCallContract dyncall = (DynamicCallContract)numericCondHash.ToDelegate();
+                    BasicMethods.DynamicCallContract dyncall = (BasicMethods.DynamicCallContract)numericCondHash.ToDelegate();
                     BasicMethods.assert((bool)dyncall("isFinalized", new object[] { cond.argsQueryFinalization }), "Condition is not finalized");
 
                     BigInteger outcome = (BigInteger)dyncall("getOutcome", new object[] { cond.argsQueryOutcome });
@@ -371,7 +374,7 @@ namespace PayResolver
             else if (_cond.conditionType == ConditionType.VIRTUAL_CONTRACT)
             {
                 byte[] virtResolverHash = Storage.Get(Storage.CurrentContext, VirtResolverHashKey);
-                DynamicCallContract dyncall = (DynamicCallContract)virtResolverHash.ToDelegate();
+                BasicMethods.DynamicCallContract dyncall = (BasicMethods.DynamicCallContract)virtResolverHash.ToDelegate();
                 return (byte[])dyncall("resolve", new object[] { _cond.virtualContractAddress });
             }
             BasicMethods.assert(false, "conditiontype error");

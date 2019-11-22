@@ -55,11 +55,9 @@ namespace VirtContractResolver
             string email = "empty";
             string description = "relay contract to deploy new contract to on-chain based on the avm/script code";
             Contract newDeployedContract = Contract.Create(avmCode, parameter_list, return_type, ContractPropertyState.HasStorage, name, version, author, email, description);
-
             //byte[] seemsToBeNewlyDeployedContractAddr = SmartContract.Hash160(avmCode);
             byte[] seemsToBeNewlyDeployedContractAddr = newDeployedContract.Script;
-
-            BasicMethods.assert(BasicMethods._isLegalAddress(seemsToBeNewlyDeployedContractAddr), "Create contract failed");
+            //BasicMethods.assert(BasicMethods._isByte32(seemsToBeNewlyDeployedContractAddr), "Create contract failed");
             Storage.Put(Storage.CurrentContext, Virt2RealPrefix.Concat(virtHashId), seemsToBeNewlyDeployedContractAddr);
 
             Deploy(virtHashId);
@@ -71,7 +69,7 @@ namespace VirtContractResolver
         public static byte[] resolve(byte[] virtHashId)
         {
             byte[] storedVirtAddr = Storage.Get(Storage.CurrentContext, Virt2RealPrefix.Concat(virtHashId));
-            BasicMethods.assert(BasicMethods._isLegalAddress(storedVirtAddr), "nonexistent virtual address");
+            //BasicMethods.assert(BasicMethods._isByte32(storedVirtAddr), "nonexistent virtual address");
             return storedVirtAddr;
         }
     }

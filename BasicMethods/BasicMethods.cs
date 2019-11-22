@@ -2,6 +2,8 @@ using System;
 
 public class BasicMethods
 {
+    public delegate object DynamicCallContract(string method, object[] args);
+
     private static readonly byte[] addressZero = Neo.SmartContract.Framework.Helper.ToScriptHash("Ab5x97fSdMzddxnmWvDXaTJC51zkbNVp4n");
 
     private static readonly byte[] Admin = Neo.SmartContract.Framework.Helper.ToScriptHash("Ab5x97fSdMzddxnmWvDXaTJC51zkbNVp4n");
@@ -18,7 +20,7 @@ public class BasicMethods
 
     public static bool _isLegalAddress(byte[] addr)
     {
-        return addr.Length == legalLength && addr != addressZero;
+        return addr.Length == legalLength && !addr.Equals(addressZero);
     }
 
     public static bool _isLegalAddresses(byte[][] addrs)
