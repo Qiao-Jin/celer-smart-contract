@@ -3,7 +3,6 @@ using Neo.SmartContract.Framework.Services.Neo;
 using System;
 using System.Numerics;
 using System.ComponentModel;
-using Helper = Neo.SmartContract.Framework.Helper;
 namespace NEP5
 {
     public class NEP5 : SmartContract
@@ -68,7 +67,9 @@ namespace NEP5
                 }
                 if (operation == "transferMulti")
                 {
-                    return transferMulti(args);
+                    BasicMethods.assert(args.Length == 1, "NEP5 parameter error");
+                    byte[] states = (byte[])args[0];
+                    return transferMulti(states);
                 }
             }
             return false;
@@ -114,8 +115,8 @@ namespace NEP5
             BasicMethods.assert(BasicMethods._isLegalAddress(from), "from address is illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(to), "to address is illegal");
             BasicMethods.assert(amount >= 0, "amount is less than 0");
-
-            BasicMethods.assert(Runtime.CheckWitness(from), "CheckWitness failed");
+            //Pending check witness
+            //BasicMethods.assert(Runtime.CheckWitness(from), "CheckWitness failed");
 
             BigInteger fromBalance = balanceOf(from);
             BasicMethods.assert(fromBalance >= amount, "from address not enough balance");
@@ -134,11 +135,12 @@ namespace NEP5
             public BigInteger amount;
         }
         [DisplayName("transferMulti")]
-        public static object transferMulti(object[] args)
+        public static object transferMulti(byte[] args)
         {
+            State[] states = (State[])Neo.SmartContract.Framework.Helper.Deserialize(args);
             for (var i = 0; i < args.Length; i++)
             {
-                State state = (State)args[i];
+                State state = states[i];
                 BasicMethods.assert((bool)transfer(state.from, state.to, state.amount), "transfer failed");
             }
             return true;

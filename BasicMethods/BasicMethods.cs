@@ -1,10 +1,11 @@
+using Neo.SmartContract.Framework.Services.Neo;
 using System;
 
 public class BasicMethods
 {
     public delegate object DynamicCallContract(string method, object[] args);
 
-    private static readonly byte[] addressZero = Neo.SmartContract.Framework.Helper.ToScriptHash("Ab5x97fSdMzddxnmWvDXaTJC51zkbNVp4n");
+    private static readonly byte[] addressZero = Neo.SmartContract.Framework.Helper.ToScriptHash("ASqYXoq6HXdfxu3XJr2RHiUFNHVh3fyQiz");
 
     private static readonly byte[] Admin = Neo.SmartContract.Framework.Helper.ToScriptHash("Ab5x97fSdMzddxnmWvDXaTJC51zkbNVp4n");
 
@@ -14,6 +15,7 @@ public class BasicMethods
     {
         if (!condition)
         {
+            Runtime.Notify(msg);
             throw new Exception(msg + " error ");
         }
     }
