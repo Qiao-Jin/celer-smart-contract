@@ -115,8 +115,7 @@ namespace NEP5
             BasicMethods.assert(BasicMethods._isLegalAddress(from), "from address is illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(to), "to address is illegal");
             BasicMethods.assert(amount >= 0, "amount is less than 0");
-            //Pending check witness
-            //BasicMethods.assert(Runtime.CheckWitness(from), "CheckWitness failed");
+            BasicMethods.assert(Runtime.CheckWitness(from), "CheckWitness failed");
 
             BigInteger fromBalance = balanceOf(from);
             BasicMethods.assert(fromBalance >= amount, "from address not enough balance");

@@ -89,7 +89,7 @@ namespace CelerLedgerMock
                 }
                 if (operation == "openChannelMockSet")
                 {
-                    BasicMethods.assert(args.Length == 6, "init parameter error");
+                    BasicMethods.assert(args.Length == 6, "openChannelMockSet parameter error");
                     byte[] _channelId = (byte[])args[0];
                     BigInteger _disputeTimeout = (BigInteger)args[1];
                     byte[] _tokenAddress = (byte[])args[2];
@@ -120,7 +120,7 @@ namespace CelerLedgerMock
                     byte[][] _peerFroms = (byte[][])args[1];
                     BigInteger[] _seqNums = (BigInteger[])args[2];
                     BigInteger[] _transferOuts = (BigInteger[])args[3];
-                    BigInteger[] _pendingPayOuts = (BigInteger[])args[3];
+                    BigInteger[] _pendingPayOuts = (BigInteger[])args[4];
                     return snapshotStatesMockSet(_channelIds, _peerFroms, _seqNums, _transferOuts, _pendingPayOuts);
                 }
                 if (operation == "snapshotStates")
@@ -167,7 +167,7 @@ namespace CelerLedgerMock
                     BigInteger _seqNum = (BigInteger)args[2];
                     BigInteger _transferOut = (BigInteger)args[3];
                     byte[] _nextPayIdListHash = (byte[])args[4]; ;
-                    BigInteger _lastPayResolveDeadline = (BigInteger)args[5]; ;
+                    BigInteger _lastPayResolveDeadline = (BigInteger)args[5];
                     BigInteger _pendingPayOut = (BigInteger)args[6];
                     return intendSettleMockSet(_channelId, _peerFrom, _seqNum, _transferOut, _nextPayIdListHash, _lastPayResolveDeadline, _pendingPayOut);
                 }

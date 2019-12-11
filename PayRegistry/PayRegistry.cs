@@ -116,8 +116,8 @@ namespace PayRegistry
             BasicMethods.assert(BasicMethods._isByte32(payHash), "invalid hash");
             BasicMethods.assert(BasicMethods._isLegalAddress(invoker), "invalid address");
             BasicMethods.assert(amount >= 0, "amount is less than zero");
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
 
-            //Pending check invoker
             byte[] payId = calculatePayId(payHash, invoker);
             byte[] payInfoBs = Storage.Get(Storage.CurrentContext, PayInfoPrefix.Concat(payId));
             PayInfo payInfo = new PayInfo();
@@ -139,8 +139,8 @@ namespace PayRegistry
             BasicMethods.assert(BasicMethods._isByte32(payHash), "invalid hash");
             BasicMethods.assert(BasicMethods._isLegalAddress(invoker), "invalid address");
             BasicMethods.assert(deadline >= 0, "deadline is less than zero");
-
-            //Pending check invoker
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
+            
             byte[] payId = calculatePayId(payHash, invoker);
             byte[] payInfoBs = Storage.Get(Storage.CurrentContext, PayInfoPrefix.Concat(payId));
             PayInfo payInfo = new PayInfo();
@@ -163,8 +163,8 @@ namespace PayRegistry
             BasicMethods.assert(BasicMethods._isLegalAddress(invoker), "invalid address");
             BasicMethods.assert(amount >= 0, "amount is less than zero");
             BasicMethods.assert(deadline >= 0, "deadline is less than zero");
-
-            //Pending check invoker
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
+            
             byte[] payId = calculatePayId(payHash, invoker);
             byte[] payInfoBs = Storage.Get(Storage.CurrentContext, PayInfoPrefix.Concat(payId));
             PayInfo payInfo = new PayInfo();

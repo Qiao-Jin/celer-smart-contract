@@ -62,9 +62,7 @@ namespace RouterRegistry
         public static bool registerRouter(byte[] invoker)
         {
             BasicMethods.assert(BasicMethods._isLegalAddress(invoker), "invoker is illegal");
-            //BasicMethods.assert(Runtime.CheckWitness(invoker), "Checkwitness failed");
-            //Pending check invoker
-
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "Checkwitness failed");
             BasicMethods.assert(Storage.Get(Storage.CurrentContext, routerInfoPrefix.Concat(invoker)).AsBigInteger() == 0, "Router address already exists");
             Storage.Put(Storage.CurrentContext, routerInfoPrefix.Concat(invoker), Blockchain.GetHeight());
 
@@ -77,8 +75,7 @@ namespace RouterRegistry
         public static bool deregisterRouter(byte[] invoker)
         {
             BasicMethods.assert(BasicMethods._isLegalAddress(invoker), "invoker is illegal");
-            //BasicMethods.assert(Runtime.CheckWitness(invoker), "Checkwitness failed");
-            //Pending check invoker
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "Checkwitness failed");
             BasicMethods.assert(Storage.Get(Storage.CurrentContext, routerInfoPrefix.Concat(invoker)).AsBigInteger() != 0, "Router address does not exist");
             Storage.Delete(Storage.CurrentContext, routerInfoPrefix.Concat(invoker));
 
@@ -91,9 +88,7 @@ namespace RouterRegistry
         public static bool refreshRouter(byte[] invoker)
         {
             BasicMethods.assert(BasicMethods._isLegalAddress(invoker), "invoker is illegal");
-            //BasicMethods.assert(Runtime.CheckWitness(invoker), "Checkwitness failed");
-            //Pending check invoker
-
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "Checkwitness failed");
             BasicMethods.assert(Storage.Get(Storage.CurrentContext, routerInfoPrefix.Concat(invoker)).AsBigInteger() != 0, "Router address does not exist");
             Storage.Put(Storage.CurrentContext, routerInfoPrefix.Concat(invoker), Blockchain.GetHeight());
 
