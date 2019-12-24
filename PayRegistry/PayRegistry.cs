@@ -30,14 +30,14 @@ namespace PayRegistry
             {
                 if (operation == "calculatePayId")
                 {
-                    BasicMethods.assert(args.Length == 2, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 2, "calculatePayId parameter error");
                     byte[] payHash = (byte[])args[0];
                     byte[] setter = (byte[])args[1];
                     return calculatePayId(payHash, setter);
                 }
                 if (operation == "setPayAmount")
                 {
-                    BasicMethods.assert(args.Length == 3, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 3, "setPayAmount parameter error");
                     byte[] invoker = (byte[])args[0];
                     byte[] payHash = (byte[])args[1];
                     BigInteger amount = (BigInteger)args[2];
@@ -45,7 +45,7 @@ namespace PayRegistry
                 }
                 if (operation == "setPayDeadline")
                 {
-                    BasicMethods.assert(args.Length == 3, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 3, "setPayDeadline parameter error");
                     byte[] invoker = (byte[])args[0];
                     byte[] payHash = (byte[])args[1];
                     BigInteger deadline = (BigInteger)args[2];
@@ -53,7 +53,7 @@ namespace PayRegistry
                 }
                 if (operation == "setPayInfo")
                 {
-                    BasicMethods.assert(args.Length == 4, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 4, "setPayInfo parameter error");
                     byte[] invoker = (byte[])args[0];
                     byte[] payHash = (byte[])args[1];
                     BigInteger amount = (BigInteger)args[2];
@@ -62,7 +62,7 @@ namespace PayRegistry
                 }
                 if (operation == "setPayAmounts")
                 {
-                    BasicMethods.assert(args.Length == 4, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 4, "setPayAmounts parameter error");
                     byte[][] invokers = (byte[][])args[0];
                     byte[][] payHashs = (byte[][])args[1];
                     BigInteger[] amounts = (BigInteger[])args[2];
@@ -70,7 +70,7 @@ namespace PayRegistry
                 }
                 if (operation == "setPayDeadlines")
                 {
-                    BasicMethods.assert(args.Length == 3, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 3, "setPayDeadlines parameter error");
                     byte[][] invokers = (byte[][])args[0];
                     byte[][] payHashs = (byte[][])args[1];
                     BigInteger[] deadlines = (BigInteger[])args[2];
@@ -78,7 +78,7 @@ namespace PayRegistry
                 }
                 if (operation == "setPayInfos")
                 {
-                    BasicMethods.assert(args.Length == 4, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 4, "setPayInfos parameter error");
                     byte[][] invokers = (byte[][])args[0];
                     byte[][] payHashs = (byte[][])args[1];
                     BigInteger[] amounts = (BigInteger[])args[2];
@@ -87,14 +87,14 @@ namespace PayRegistry
                 }
                 if (operation == "getPayAmounts")
                 {
-                    BasicMethods.assert(args.Length == 2, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 2, "getPayAmounts parameter error");
                     byte[][] payHashs = (byte[][])args[0];
                     BigInteger lastPayResolveDeadline = (BigInteger)args[1];
                     return getPayAmounts(payHashs, lastPayResolveDeadline);
                 }
                 if (operation == "getPayInfo")
                 {
-                    BasicMethods.assert(args.Length == 1, "PayRegistry parameter error");
+                    BasicMethods.assert(args.Length == 1, "getPayInfo parameter error");
                     byte[] payId = (byte[])args[0];
                     return getPayInfo(payId);
                 }

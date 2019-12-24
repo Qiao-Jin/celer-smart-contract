@@ -26,7 +26,7 @@ namespace PayResolver
             {
                 if (operation == "init")
                 {
-                    BasicMethods.assert(args.Length == 2, "PayResolver parameter error");
+                    BasicMethods.assert(args.Length == 2, "init parameter error");
                     byte[] revPayRegistryAddr = (byte[])args[0];
                     byte[] revVirtResolverAddr = (byte[])args[1];
                     return init(revPayRegistryAddr, revVirtResolverAddr);
@@ -41,15 +41,17 @@ namespace PayResolver
                 }
                 if (operation == "resolvePaymentByConditions")
                 {
-                    BasicMethods.assert(args.Length == 1, "PayResolver parameter error");
-                    byte[] resolvePayRequestBs = (byte[])args[0];
-                    return resolvePaymentByConditions(resolvePayRequestBs);
+                    BasicMethods.assert(args.Length == 2, "resolvePaymentByConditions parameter error");
+                    byte[] invoker = (byte[])args[0];
+                    byte[] resolvePayRequestBs = (byte[])args[1];
+                    return resolvePaymentByConditions(invoker, resolvePayRequestBs);
                 }
                 if (operation == "resolvePaymentByVouchedResult")
                 {
-                    BasicMethods.assert(args.Length == 1, "PayResolver parameter error");
-                    byte[] vouchedPayResultBs = (byte[])args[0];
-                    return resolvePaymentByVouchedResult(vouchedPayResultBs);
+                    BasicMethods.assert(args.Length == 2, "resolvePaymentByVouchedResult parameter error");
+                    byte[] invoker = (byte[])args[0];
+                    byte[] vouchedPayResultBs = (byte[])args[1];
+                    return resolvePaymentByVouchedResult(invoker, vouchedPayResultBs);
                 }
             }
             return false;
@@ -82,7 +84,7 @@ namespace PayResolver
         }
 
         [DisplayName("resolvePaymentByConditions")]
-        public static object resolvePaymentByConditions(byte[] resolvePayRequestBs)
+        public static object resolvePaymentByConditions(byte[] invoker, byte[] resolvePayRequestBs)
         {
             PbChain.ResolvePayByConditionsRequest resolvePayRequest = new PbChain.ResolvePayByConditionsRequest();
             resolvePayRequest = (PbChain.ResolvePayByConditionsRequest)Helper.Deserialize(resolvePayRequestBs);
@@ -105,12 +107,12 @@ namespace PayResolver
                 BasicMethods.assert(false, "error");
             }
             byte[] payHash = SmartContract.Sha256(resolvePayRequest.condPay);
-            _resolvePayment(pay, payHash, amount);
+            _resolvePayment(invoker, pay, payHash, amount);
             return true;
         }
 
         [DisplayName("resolvePaymentByVouchedResult")]
-        public static object resolvePaymentByVouchedResult(byte[] vouchedPayResultBs)
+        public static object resolvePaymentByVouchedResult(byte[] invoker, byte[] vouchedPayResultBs)
         {
             PbEntity.VouchedCondPayResult vouchedPayResult = new PbEntity.VouchedCondPayResult();
             vouchedPayResult = (PbEntity.VouchedCondPayResult)Helper.Deserialize(vouchedPayResultBs);
@@ -128,26 +130,22 @@ namespace PayResolver
 
             byte[] payHash = SmartContract.Sha256(payResult.condPay);
 
-            _resolvePayment(pay, payHash, payResult.amount);
+            _resolvePayment(invoker, pay, payHash, payResult.amount);
 
             return true;
         }
 
-        public static void _resolvePayment(PbEntity.ConditionalPay _pay, byte[] _payHash, BigInteger _amount)
+        public static object _resolvePayment(byte[] invoker, PbEntity.ConditionalPay _pay, byte[] _payHash, BigInteger _amount)
         {
             BasicMethods.assert(_amount >= 0, "amount is less than zero");
-
             BigInteger now = Blockchain.GetHeight();
             BasicMethods.assert(now <= _pay.resolveDeadline, "passed pay resolve deadline in condPay msg");
-
             byte[] payId = _calculatePayId(_payHash, ExecutionEngine.ExecutingScriptHash);
-
             byte[] payRegistryHash = getPayRegistryHash();
             BasicMethods.DynamicCallContract dyncall = (BasicMethods.DynamicCallContract)payRegistryHash.ToDelegate();
             BigInteger[] res = (BigInteger[]) dyncall("getPayInfo", new object[] { payId });
             BigInteger currentAmt = res[0];
             BigInteger currentDeadline = res[1];
-
             BasicMethods.assert(
                 currentDeadline == 0 || now <= currentDeadline,
                 "Passed onchain resolve pay deadline"
@@ -161,12 +159,14 @@ namespace PayResolver
                 
                 if (_amount == accountAmtPair.amt)
                 {
-                    BasicMethods.assert((bool)dyncall("setPayInfo", new object[] { _payHash, _amount, now}), "setPayInfo error");
+                    dyncall = (BasicMethods.DynamicCallContract)payRegistryHash.ToDelegate();
+                    BasicMethods.assert((bool)dyncall("setPayInfo", new object[] {invoker, _payHash, _amount, now}), "setPayInfo error");
                     ResolvePayment(payId, _amount, now);
                 }
                 else
                 {
-                    BasicMethods.assert((bool)dyncall("setPayAmount", new object[] { _payHash, _amount }), "setPayAmount error");
+                    dyncall = (BasicMethods.DynamicCallContract)payRegistryHash.ToDelegate();
+                    BasicMethods.assert((bool)dyncall("setPayAmount", new object[] { invoker, _payHash, _amount }), "setPayAmount error");
                     ResolvePayment(payId, _amount, currentDeadline);
                 }
             }
@@ -183,9 +183,11 @@ namespace PayResolver
                     BasicMethods.assert(newDeadline > 0, "new resolve deadline is not greater than 0");
                 }
 
-                BasicMethods.assert((bool)dyncall("setPayInfo", new object[] { _payHash, _amount, newDeadline }), "setPayInfo error");
+                dyncall = (BasicMethods.DynamicCallContract)payRegistryHash.ToDelegate();
+                BasicMethods.assert((bool)dyncall("setPayInfo", new object[] { invoker, _payHash, _amount, newDeadline }), "setPayInfo error");
                 ResolvePayment(payId, _amount, currentDeadline);
             }
+            return true;
         }
 
         private static BigInteger _calculateBooleanAndPayment(PbEntity.ConditionalPay _pay, byte[][] _preimages)
@@ -196,7 +198,7 @@ namespace PayResolver
             PbEntity.Condition[] conditions = _pay.conditions;
             for (var i = 0; i < conditions.Length; i++)
             {
-                PbEntity.Condition cond = _pay.conditions[i];
+                PbEntity.Condition cond = conditions[i];
                 if (cond.conditionType == ConditionType.HASH_LOCK)
                 {
                     BasicMethods.assert(SmartContract.Sha256(_preimages[j]) == cond.hashLock, "wrong preimage");
@@ -210,6 +212,7 @@ namespace PayResolver
                     byte[] booleanCondHash = _getCondAddress(cond);
                     BasicMethods.DynamicCallContract dyncall = (BasicMethods.DynamicCallContract)booleanCondHash.ToDelegate();
                     BasicMethods.assert((bool)dyncall("isFinalized", new object[] { cond.argsQueryFinalization }), "Condition is not finalized");
+                    dyncall = (BasicMethods.DynamicCallContract)booleanCondHash.ToDelegate();
                     bool outcome = (bool)dyncall("getOutcome", new object[] { cond.argsQueryOutcome });
                     if (!outcome){
                         hasFalseContractCond = true;

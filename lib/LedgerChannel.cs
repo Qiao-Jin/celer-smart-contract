@@ -296,6 +296,7 @@ public class LedgerChannel
     public static bool _checkCoSignatures(LedgerStruct.Channel _c, byte[] _h, byte[][] _sig)
     {
         BasicMethods.assert(BasicMethods._isByte32(_h), "_fromLedgerAddr parameter error");
+        BasicMethods.assert(_sig.Length == 2, "_fromLedgerAddr parameter error");
         //Pending
         return true;
     }
