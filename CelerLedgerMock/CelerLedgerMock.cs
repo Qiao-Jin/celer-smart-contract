@@ -1,5 +1,6 @@
 ﻿using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
+using Neo.SmartContract.Framework.Services.System;
 using System;
 using System.ComponentModel;
 using System.Numerics;
@@ -44,7 +45,8 @@ namespace CelerLedgerMock
         private static LedgerStruct.Ledger getLedger()
         {
             byte[] result = Storage.Get(Storage.CurrentContext, ledgerHashKey);
-            return (LedgerStruct.Ledger)Neo.SmartContract.Framework.Helper.Deserialize(result);
+            LedgerStruct.Ledger ledger = (LedgerStruct.Ledger)Neo.SmartContract.Framework.Helper.Deserialize(result);
+            return ledger;
         }
 
         private static void setLedger(LedgerStruct.Ledger ledger)
@@ -106,12 +108,11 @@ namespace CelerLedgerMock
                 }
                 if (operation == "deposit")
                 {
-                    BasicMethods.assert(args.Length == 4, "deposit parameter error");
+                    BasicMethods.assert(args.Length == 3, "deposit parameter error");
                     byte[] _channelId = (byte[])args[0];
                     byte[] _receiver = (byte[])args[1];
                     BigInteger _transferFromAmount = (BigInteger)args[2];
-                    BigInteger _value = (BigInteger)args[3];
-                    return deposit(_channelId, _receiver, _transferFromAmount, _value);
+                    return deposit(_channelId, _receiver, _transferFromAmount);
                 }
                 if (operation == "snapshotStatesMockSet")
                 {
@@ -354,10 +355,15 @@ namespace CelerLedgerMock
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
             c.disputeTimeout = _disputeTimeout;
             LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
-            c = LedgerOperation._updateChannelStatus(getLedger(), c, channelStatus.Operable);
-            PbEntity.TokenInfo token = c.token;
-            token.address = _tokenAddress;
-            token.tokenType = _tokenType;
+            LedgerStruct.Ledger ledger = getLedger();
+            c = LedgerOperation._updateChannelStatus(ledger, c, channelStatus.Operable);
+            PbEntity.TokenInfo token = new PbEntity.TokenInfo()
+            {
+                address = _tokenAddress,
+                tokenType = _tokenType
+            };
+            c.token = token;
+
             LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
             LedgerStruct.PeerProfile peerProfile0 = peerProfiles[0];
             LedgerStruct.PeerProfile peerProfile1 = peerProfiles[1];
@@ -365,6 +371,9 @@ namespace CelerLedgerMock
             peerProfile0.deposit = _deposits[0];
             peerProfile1.peerAddr = _peerAddrs[1];
             peerProfile1.deposit = _deposits[1];
+            peerProfiles[0] = peerProfile0;
+            peerProfiles[1] = peerProfile1;
+            c.peerProfiles = peerProfiles;
             LedgerStruct.setChannelMap(_channelId, c);
             return true;
         }
@@ -387,6 +396,7 @@ namespace CelerLedgerMock
             };
 
             PbEntity.TokenInfo token = c.token;
+            LedgerStruct.setChannelMap(tmpChannelId, c);
             OpenChannelEvent(
                 tmpChannelId,
                 token.tokenType,
@@ -398,7 +408,7 @@ namespace CelerLedgerMock
         }
 
         [DisplayName("deposit")]
-        public static bool deposit(byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, BigInteger _value)
+        public static bool deposit(byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount)
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(_receiver), "_receiver illegal");
@@ -407,11 +417,18 @@ namespace CelerLedgerMock
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
             byte rid = LedgerChannel._getPeerId(c, _receiver);
             BasicMethods.assert(rid == 0 || rid == 1, "rid illegal");
-            BigInteger amount = _transferFromAmount + _value;
+            PbEntity.TokenInfo token = c.token;
+            LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.tokenType);
+            BasicMethods.assert(ExecutionEngine.ExecutingScriptHash.Equals(transactionValue.receiver), "token not sent to this smart contract");
+            BasicMethods.assert(transactionValue.tokenType == token.tokenType, "Token type doesn't match");
+            BigInteger amount = _transferFromAmount + transactionValue.value;
             LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
             LedgerStruct.PeerProfile peerProfile = peerProfiles[rid];
-            peerProfile.deposit = peerProfile.deposit+ amount;
+            peerProfile.deposit = peerProfile.deposit + amount;
+            peerProfiles[rid] = peerProfile;
+            c.peerProfiles = peerProfiles;
             LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMapInner(c);
+            LedgerStruct.setChannelMap(_channelId, c);
             DepositEvent(_channelId, balanceMap.peerAddrs, balanceMap.deposits, balanceMap.withdrawals);
             return true;
         }
@@ -424,6 +441,7 @@ namespace CelerLedgerMock
                 && _seqNums.Length == _transferOuts.Length
                 && _transferOuts.Length == _pendingPayOuts.Length,
                 "Parameter length not the same");
+
             for (int i = 0; i < _channelIds.Length; i++)
             {
                 BasicMethods.assert(BasicMethods._isByte32(_channelIds[i]), "_channelIds " + i + " illegal");
@@ -431,16 +449,18 @@ namespace CelerLedgerMock
                 BasicMethods.assert(_seqNums[i] >= 0, "_seqNums " + i + " illegal");
                 BasicMethods.assert(_transferOuts[i] >= 0, "_transferOuts " + i + " illegal");
                 BasicMethods.assert(_pendingPayOuts[i] >= 0, "_pendingPayOuts " + i + " illegal");
-
+                
                 LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelIds[i]);
                 byte peerFromId = LedgerChannel._getPeerId(c, _peerFroms[i]);
                 LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
                 LedgerStruct.PeerProfile peerProfile = peerProfiles[peerFromId];
                 LedgerStruct.PeerState state = peerProfile.state;
-
                 state.seqNum = _seqNums[i];
                 state.transferOut = _transferOuts[i];
                 state.pendingPayOut = _pendingPayOuts[i];
+                peerProfile.state = state;
+                peerProfiles[peerFromId] = peerProfile;
+                c.peerProfiles = peerProfiles;
                 LedgerStruct.setChannelMap(_channelIds[i], c);
             }
             setTmpChannelIdSet(_channelIds);
@@ -475,7 +495,7 @@ namespace CelerLedgerMock
             withdrawIntent.amount = _amount;
             withdrawIntent.requestTime = Blockchain.GetHeight();
             withdrawIntent.recipientChannelId = _recipientChannelId;
-
+            c.withdrawIntent = withdrawIntent;
             setTmpChannelId(_channelId);
             LedgerStruct.setChannelMap(_channelId, c);
             return true;
@@ -499,17 +519,15 @@ namespace CelerLedgerMock
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
 
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-
             LedgerStruct.WithdrawIntent withdrawIntent = c.withdrawIntent;
-            byte[] receiver = (byte[])withdrawIntent.receiver.Clone();
+            byte[] receiver = BasicMethods.clone(withdrawIntent.receiver);
             BigInteger amount = withdrawIntent.amount;
-            byte[] recipientChannelId = (byte[])withdrawIntent.recipientChannelId.Clone();
+            byte[] recipientChannelId = BasicMethods.clone(withdrawIntent.recipientChannelId);
             withdrawIntent.receiver = null;
             withdrawIntent.amount = 0;
             withdrawIntent.requestTime = 0;
             withdrawIntent.recipientChannelId = null;
             c.withdrawIntent = withdrawIntent;
-
             c = LedgerChannel._addWithdrawal(c, receiver, amount);
             LedgerStruct.setChannelMap(_channelId, c);
             LedgerStruct.BalanceMap balanceMap = LedgerChannel.getBalanceMapInner(c);
@@ -565,6 +583,9 @@ namespace CelerLedgerMock
             state.nextPayIdListHash = _nextPayIdListHash;
             state.lastPayResolveDeadline = _lastPayResolveDeadline;
             state.pendingPayOut = _pendingPayOut;
+            peerProfile.state = state;
+            peerProfiles[peerFromId] = peerProfile;
+            c.peerProfiles = peerProfiles;
 
             c = _updateOverallStatesByIntendState(c);
             LedgerStruct.setChannelMap(_channelId, c);
@@ -818,18 +839,25 @@ namespace CelerLedgerMock
             state.nextPayIdListHash = null;
             state.lastPayResolveDeadline = 0;
             state.pendingPayOut = 0;
+            peerProfile0.state = state;
             state = peerProfile1.state;
             state.seqNum = 0;
             state.transferOut = 0;
             state.nextPayIdListHash = null;
             state.lastPayResolveDeadline = 0;
             state.pendingPayOut = 0;
+            peerProfile1.state = state;
+            peerProfiles[0] = peerProfile0;
+            peerProfiles[1] = peerProfile1;
+            c.peerProfiles = peerProfiles;
+
             // reset possibly remaining WithdrawIntent freezed by previous intendSettle()
             LedgerStruct.WithdrawIntent intent = c.withdrawIntent;
             intent.receiver = null;
             intent.amount = 0;
             intent.requestTime = 0;
             intent.recipientChannelId = null;
+            c.withdrawIntent = intent;
             return c;
         }
     }

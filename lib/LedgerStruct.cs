@@ -1,5 +1,6 @@
 ﻿using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
+using Neo.SmartContract.Framework.Services.System;
 using System.Numerics;
 
 public class LedgerStruct
@@ -15,12 +16,14 @@ public class LedgerStruct
 
     public static ChannelStatus getStandardChannelStatus()
     {
-        ChannelStatus cs = new ChannelStatus();
-        cs.Uninitialized = 0;
-        cs.Operable = 1;
-        cs.Settling = 2;
-        cs.Closed = 3;
-        cs.Migrated = 4;
+        ChannelStatus cs = new ChannelStatus()
+        {
+            Uninitialized = 0,
+            Operable = 1,
+            Settling = 2,
+            Closed = 3,
+            Migrated = 4
+        };
         return cs;
     }
 
@@ -33,6 +36,19 @@ public class LedgerStruct
         public BigInteger pendingPayOut;
     }
 
+    public static PeerState initPeerState()
+    {
+        PeerState state = new PeerState()
+        {
+            seqNum = 0,
+            transferOut = 0,
+            nextPayIdListHash = null,
+            lastPayResolveDeadline = 0,
+            pendingPayOut = 0
+        };
+        return state;
+    }
+
     public struct PeerProfile
     {
         public byte[] peerAddr;
@@ -41,12 +57,36 @@ public class LedgerStruct
         public PeerState state;
     }
 
+    public static PeerProfile initPeerProfile()
+    {
+        PeerProfile peerProfile = new PeerProfile()
+        {
+            peerAddr = null,
+            deposit = 0,
+            withdrawal = 0,
+            state = initPeerState()
+        };
+        return peerProfile;
+    }
+
     public struct WithdrawIntent
     {
         public byte[] receiver;
         public BigInteger amount;
         public BigInteger requestTime;
         public byte[] recipientChannelId;
+    }
+
+    public static WithdrawIntent initWithdrawIntent()
+    {
+        WithdrawIntent intent = new WithdrawIntent()
+        {
+            receiver = null,
+            amount = 0,
+            requestTime = 0,
+            recipientChannelId = null
+        };
+        return intent;
     }
 
     public struct Channel
@@ -59,6 +99,27 @@ public class LedgerStruct
         public PeerProfile[] peerProfiles;
         public BigInteger cooperativeWithdrawSeqNum;
         public WithdrawIntent withdrawIntent;
+    }
+
+    public static Channel initChannel()
+    {
+        Channel newChannel = new Channel();
+        newChannel.settleFinalizedTime = 0;
+        newChannel.disputeTimeout = 0;
+        newChannel.token = new PbEntity.TokenInfo()
+        {
+            tokenType = 0,
+            address = null
+        };
+        newChannel.status = 0;
+        newChannel.migratedTo = null;
+        PeerProfile[] peerProfiles = new PeerProfile[2];
+        peerProfiles[0] = initPeerProfile();
+        peerProfiles[1] = initPeerProfile();
+        newChannel.peerProfiles = peerProfiles;
+        newChannel.cooperativeWithdrawSeqNum = 0;
+        newChannel.withdrawIntent = initWithdrawIntent();
+        return newChannel;
     }
 
     public struct Ledger
@@ -77,7 +138,7 @@ public class LedgerStruct
     public static BigInteger getChannelStatusNums (BigInteger key)
     {
         byte[] result = Storage.Get(Storage.CurrentContext, Ledger.channelStatusNumsPrefix.Concat(key.ToByteArray()));
-        if (result == null) return -1;
+        if (result == null) return 0;
         return result.ToBigInteger();
     }
 
@@ -103,13 +164,67 @@ public class LedgerStruct
     public static Channel getChannelMap(byte[] key)
     {
         byte[] result = Storage.Get(Storage.CurrentContext, Ledger.channelMapPrefix.Concat(key));
-        return (Channel)Neo.SmartContract.Framework.Helper.Deserialize(result);
+        if (result != null)
+        {
+            return (Channel)Neo.SmartContract.Framework.Helper.Deserialize(result);
+        }
+        else
+        {
+            return initChannel();
+        }
     }
 
     public static bool setChannelMap(byte[] key, Channel value)
     {
         Storage.Put(Storage.CurrentContext, Ledger.channelMapPrefix.Concat(key), Neo.SmartContract.Framework.Helper.Serialize(value));
         return true;
+    }
+
+    public static readonly byte[] NeoID = Neo.SmartContract.Framework.Helper.HexToBytes("c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b").Reverse();
+    public static readonly byte[] GasID = Neo.SmartContract.Framework.Helper.HexToBytes("602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7").Reverse();
+
+    public struct TransactionValue
+    {
+        public byte tokenType;
+        public BigInteger value;
+        public byte[] receiver;
+    }
+
+    public static TransactionValue getTransactionValue(byte tokenType)
+    {
+        PbEntity.TokenType token = PbEntity.getStandardTokenType();
+        Transaction tx = ExecutionEngine.ScriptContainer as Transaction;
+        TransactionInput[] inputs = tx.GetInputs();
+        TransactionOutput[] outputs = tx.GetOutputs();
+        if (outputs.Length == 0)
+        {
+            return new TransactionValue()
+            {
+                tokenType = tokenType,
+                value = 0,
+                receiver = ExecutionEngine.ExecutingScriptHash
+            };
+        }
+        BasicMethods.assert(outputs.Length == 1, "Invalid outputs length");
+        byte[] assetid = outputs[0].AssetId;
+        //Temperately only support NEO and GAS
+        byte type = token.INVALID;
+        if (assetid.Equals(NeoID))
+        {
+            type = token.NEO;
+        }
+        else if (assetid.Equals(GasID))
+        {
+            type = token.GAS;
+        }
+        BasicMethods.assert(tokenType == type, "Unmatch token type");
+        TransactionValue transactionValue = new TransactionValue()
+        {
+            tokenType = type,
+            value = outputs[0].Value,
+            receiver = outputs[0].ScriptHash
+        };
+        return transactionValue;
     }
 
     public struct BalanceMap

@@ -408,7 +408,7 @@ public class PbEntity
         return c;
     }
 
-    public class ConditionalPay
+    public struct ConditionalPay
     {
         public BigInteger payTimestamp;
         public byte[] src;

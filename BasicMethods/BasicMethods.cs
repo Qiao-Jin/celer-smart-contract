@@ -63,4 +63,11 @@ public class BasicMethods
     {
         return Admin;
     }
+
+    public static byte[] clone(byte[] input)
+    {
+        if (input == null) return null;
+        byte[] result = (byte[])Neo.SmartContract.Framework.Helper.Deserialize(Neo.SmartContract.Framework.Helper.Serialize(input));
+        return result;
+    }
 }

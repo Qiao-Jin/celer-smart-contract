@@ -1,5 +1,4 @@
 ﻿using Neo.SmartContract.Framework;
-using System;
 
 public class PbChain
 {

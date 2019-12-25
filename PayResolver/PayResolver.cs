@@ -88,7 +88,7 @@ namespace PayResolver
         {
             PbChain.ResolvePayByConditionsRequest resolvePayRequest = new PbChain.ResolvePayByConditionsRequest();
             resolvePayRequest = (PbChain.ResolvePayByConditionsRequest)Helper.Deserialize(resolvePayRequestBs);
-            PbEntity.ConditionalPay pay = Helper.Deserialize(resolvePayRequest.condPay) as PbEntity.ConditionalPay;
+            PbEntity.ConditionalPay pay = (PbEntity.ConditionalPay)Helper.Deserialize(resolvePayRequest.condPay);
             PbEntity.TransferFunction function = pay.transferFunc;
             byte funcType = function.logicType;
             BigInteger amount = 0;
