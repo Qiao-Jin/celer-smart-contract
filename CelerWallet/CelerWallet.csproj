@@ -48,6 +48,12 @@
     <Compile Include="..\BasicMethods\BasicMethods.cs">
       <Link>BasicMethods.cs</Link>
     </Compile>
+    <Compile Include="..\lib\LedgerStruct.cs">
+      <Link>LedgerStruct.cs</Link>
+    </Compile>
+    <Compile Include="..\PbEntity\PbEntity.cs">
+      <Link>PbEntity.cs</Link>
+    </Compile>
     <Compile Include="CelerWallet.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

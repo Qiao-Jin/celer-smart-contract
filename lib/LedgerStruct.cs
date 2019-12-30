@@ -182,6 +182,8 @@ public class LedgerStruct
 
     public static readonly byte[] NeoID = Neo.SmartContract.Framework.Helper.HexToBytes("c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b").Reverse();
     public static readonly byte[] GasID = Neo.SmartContract.Framework.Helper.HexToBytes("602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7").Reverse();
+    public static readonly byte[] NeoAddress = new byte[20] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    public static readonly byte[] GasAddress = new byte[20] { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     public struct TransactionValue
     {
@@ -194,7 +196,6 @@ public class LedgerStruct
     {
         PbEntity.TokenType token = PbEntity.getStandardTokenType();
         Transaction tx = ExecutionEngine.ScriptContainer as Transaction;
-        TransactionInput[] inputs = tx.GetInputs();
         TransactionOutput[] outputs = tx.GetOutputs();
         if (outputs.Length == 0)
         {

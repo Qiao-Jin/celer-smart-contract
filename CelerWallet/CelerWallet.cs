@@ -10,7 +10,7 @@ namespace CelerWallet
 {
     public class CelerWallet : SmartContract
     {
-        public class Wallet
+        public struct Wallet
         {
             public byte[][] owners;
             public byte[] theOperator;
@@ -19,15 +19,30 @@ namespace CelerWallet
             //public Map<byte[], bool> proposalVotes;
         }
 
+        public struct MathOperation
+        {
+            public byte add;
+            public byte sub;
+        }
+
+        public static MathOperation getStandardMathOperation()
+        {
+            return new MathOperation
+            {
+                add = 0,
+                sub = 1
+            };
+        }
+
         //private static bool _paused;
-        public static byte[] PausedKey = "paused".AsByteArray();
+        public static readonly byte[] PausedKey = "paused".AsByteArray();
         //public static Map<byte[], bool> _pausers;
-        public static byte[] PauserKey = "pausers".AsByteArray();
-        public static byte[] WalletNum = "walletNum".AsByteArray();
+        public static readonly byte[] PauserKey = "pausers".AsByteArray();
+        public static readonly byte[] WalletNum = "walletNum".AsByteArray();
         //public static Map<byte[], Wallet> wallets;
-        public static byte[] WalletsPrefix = "wallets".AsByteArray();
-        public static byte[] WalletsBalancesPrefix = "balances".AsByteArray();
-        public static byte[] WalletsProposalVotesPrefix = "proposalVotes".AsByteArray();
+        public static readonly byte[] WalletsPrefix = "wallets".AsByteArray();
+        public static readonly byte[] WalletsBalancesPrefix = "balances".AsByteArray();
+        public static readonly byte[] WalletsProposalVotesPrefix = "proposalVotes".AsByteArray();
 
         public delegate object NEP5Contract(string method, object[] args);
 
@@ -58,14 +73,37 @@ namespace CelerWallet
         {
             if (Runtime.Trigger == TriggerType.Verification)//取钱才会涉及这里
             {
-                return false;
+                Transaction tx = ExecutionEngine.ScriptContainer as Transaction;
+                TransactionAttribute[] attributes = tx.GetAttributes();
+                byte[] walletid = null;
+                foreach (TransactionAttribute attribute in attributes)
+                {
+                    if (attribute.Usage == 0xff)//Remark15, used to pass walletid
+                    {
+                        walletid = attribute.Data;
+                        break;
+                    }
+                }
+                if (walletid == null) return false;
+
+                BigInteger[] tokenValues = getTokenWithdraw();
+
+                if (tokenValues[0] > getBalance(walletid, LedgerStruct.NeoAddress)) return false;
+                if (tokenValues[1] > getBalance(walletid, LedgerStruct.GasAddress)) return false;
+                return true;
             }
             else if (Runtime.Trigger == TriggerType.VerificationR)
             {
-                return false;
+                return true;
             }
             else if (Runtime.Trigger == TriggerType.Application)
             {
+                if (method == "pause")
+                {
+                    BasicMethods.assert(args.Length == 1, "params length error");
+                    byte[] invoker = (byte[])args[0];
+                    return pause(invoker);
+                }
                 if (method == "unpause")
                 {
                     BasicMethods.assert(args.Length == 1, "params length error");
@@ -95,7 +133,21 @@ namespace CelerWallet
                     byte[] nonce = (byte[])args[3];
                     return create(invoker, owners, theOperator, nonce);
                 }
-                if (method == "depositNEP5")
+                if (method == "depositneo")
+                {
+                    BasicMethods.assert(args.Length == 2, "params length error");
+                    byte[] invoker = (byte[])args[0];
+                    byte[] walletId = (byte[])args[1];
+                    return depositNEO(invoker, walletId);
+                }
+                if (method == "depositgas")
+                {
+                    BasicMethods.assert(args.Length == 2, "params length error");
+                    byte[] invoker = (byte[])args[0];
+                    byte[] walletId = (byte[])args[1];
+                    return depositGAS(invoker, walletId);
+                }
+                /*if (method == "depositNEP5")
                 {
                     BasicMethods.assert(args.Length == 4, "params length error");
                     byte[] invoker = (byte[])args[0];
@@ -103,7 +155,7 @@ namespace CelerWallet
                     byte[] tokenAddress = (byte[])args[2];
                     BigInteger amount = (BigInteger)args[3];
                     return depositNEP5(invoker, walletId, tokenAddress, amount);
-                }
+                }*/
                 if (method == "withdraw")
                 {
                     BasicMethods.assert(args.Length == 4, "params length error");
@@ -140,7 +192,7 @@ namespace CelerWallet
                 }
                 if (method == "drainToken")
                 {
-                    BasicMethods.assert(args.Length == 3, "params length error");
+                    BasicMethods.assert(args.Length == 4, "params length error");
                     byte[] invoker = (byte[])args[0];
                     byte[] tokenAddress = (byte[])args[1];
                     byte[] receiver = (byte[])args[2];
@@ -182,14 +234,12 @@ namespace CelerWallet
             byte[] walletBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(walletId));
             if (walletBs.Length == 0)
                 return new Wallet();
-            return Helper.Deserialize(walletBs) as Wallet;
+            return (Wallet)Helper.Deserialize(walletBs);
         }
 
         public static void _onlyOperator(byte[] _walletId)
         {
             BasicMethods.assert(Runtime.CheckWitness(getWallet(_walletId).theOperator), "operator checkwitness failed");
-            //byte[] theOperator = getWallet(_walletId).theOperator;
-            //assert(_invoker == theOperator, "msg.sender is not operator");
         }
 
         public static void _onlyWalletOwner(byte[] _walletId, byte[] _addr)
@@ -216,14 +266,49 @@ namespace CelerWallet
             BasicMethods.assert(BasicMethods._isLegalAddresses(owners), "owners contains illegal address");
             w.owners = owners;
             w.theOperator = theOperator;
+            Storage.Put(Storage.CurrentContext, WalletsPrefix.Concat(walletId), Helper.Serialize(w));
             BigInteger walletNum = Storage.Get(Storage.CurrentContext, WalletNum).AsBigInteger();
             Storage.Put(Storage.CurrentContext, WalletNum, (walletNum + 1).AsByteArray());
-            Storage.Put(Storage.CurrentContext, WalletsPrefix.Concat(walletId), Helper.Serialize(w));
             CreateWallet(walletId, owners, theOperator);
             return walletId;
         }
 
-        [DisplayName("depositNEP5")]
+        [DisplayName("depositNEO")]
+        public static object depositNEO(byte[] invoker, byte[] walletId)
+        {
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
+            BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
+            PbEntity.TokenType token = PbEntity.getStandardTokenType();
+            LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.NEO);
+            BasicMethods.assert(transactionValue.value >= 0, "amount is less than zero");
+            BasicMethods.assert(transactionValue.receiver.Equals(ExecutionEngine.ExecutingScriptHash) , "token receiver is not current smart contract");
+
+            _whenNotPaused();
+            BasicMethods.assert(_updateBalance(walletId, LedgerStruct.NeoAddress, transactionValue.value, getStandardMathOperation().add), "updateBalance failed");
+
+            DepositToWallet(walletId, LedgerStruct.NeoAddress, transactionValue.value);
+            return true;
+        }
+
+        [DisplayName("depositGAS")]
+        public static object depositGAS(byte[] invoker, byte[] walletId)
+        {
+            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
+            BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
+            PbEntity.TokenType token = PbEntity.getStandardTokenType();
+            LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.GAS);
+            BasicMethods.assert(transactionValue.value >= 0, "amount is less than zero");
+            BasicMethods.assert(transactionValue.receiver.Equals(ExecutionEngine.ExecutingScriptHash), "token receiver is not current smart contract");
+
+            _whenNotPaused();
+
+            BasicMethods.assert(_updateBalance(walletId, LedgerStruct.GasAddress, transactionValue.value, getStandardMathOperation().add), "updateBalance failed");
+
+            DepositToWallet(walletId, LedgerStruct.GasAddress, transactionValue.value);
+            return true;
+        }
+
+        /*[DisplayName("depositNEP5")]
         public static object depositNEP5(byte[] invoker, byte[] walletId, byte[] tokenAddress, BigInteger amount)
         {
             BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
@@ -233,7 +318,7 @@ namespace CelerWallet
 
             _whenNotPaused();
 
-            BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, "add"), "updateBalance failed");
+            BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, mathOperation.add), "updateBalance failed");
             NEP5Contract dyncall = (NEP5Contract)tokenAddress.ToDelegate();
             Object[] args = new object[] { invoker, ExecutionEngine.ExecutingScriptHash, amount };
             bool res = (bool)dyncall("transfer", args);
@@ -241,22 +326,32 @@ namespace CelerWallet
 
             DepositToWallet(walletId, tokenAddress, amount);
             return true;
-        }
+        }*/
 
         [DisplayName("withdraw")]
+        //需要重写
         public static object withdraw(byte[] walletId, byte[] tokenAddress, byte[] receiver, BigInteger amount)
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal, not byte32");
             BasicMethods.assert(BasicMethods._isLegalAddress(tokenAddress), "tokenAddress is illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(receiver), "receiver address is illegal");
-            BasicMethods.assert(amount > 0, "amount is less than zero");
-            //assert(Runtime.CheckWitness(receiver), "CheckWitness failed");
+            BasicMethods.assert(amount >= 0, "amount is less than zero");
+            BasicMethods.assert(Runtime.CheckWitness(receiver), "CheckWitness failed");
+            BigInteger[] tokenValues = getTokenWithdraw();
+            if (tokenAddress.Equals(LedgerStruct.NeoAddress))
+            {
+                BasicMethods.assert(amount >= tokenValues[0], "amount is less than zero");
+            }
+            else if (tokenAddress.Equals(LedgerStruct.NeoAddress))
+            {
+                BasicMethods.assert(amount >= tokenValues[1], "amount is less than zero");
+            }
 
             _whenNotPaused();
             _onlyOperator(walletId);
             _onlyWalletOwner(walletId, receiver);
 
-            BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, "sub"), "updateBalance failed");
+            BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, getStandardMathOperation().sub), "updateBalance failed");
             BasicMethods.assert(_withdrawToken(tokenAddress, receiver, amount), "withdrawToken failed");
             WithdrawFromWallet(walletId, tokenAddress, receiver, amount);
             return true;
@@ -269,16 +364,16 @@ namespace CelerWallet
             BasicMethods.assert(BasicMethods._isByte32(toWalletId), "toWalletId illegal, not byte32");
             BasicMethods.assert(BasicMethods._isLegalAddress(tokenAddress), "tokenAddress is illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(receiver), "receiver address is illegal");
-            BasicMethods.assert(amount > 0, "amount is less than zero");
-            //assert(Runtime.CheckWitness(receiver), "CheckWitness failed");
+            BasicMethods.assert(amount >= 0, "amount is less than zero");
+            BasicMethods.assert(Runtime.CheckWitness(receiver), "CheckWitness failed");
 
             _whenNotPaused();
             _onlyOperator(fromWalletId);
             _onlyWalletOwner(fromWalletId, receiver);
             _onlyWalletOwner(toWalletId, receiver);
 
-            BasicMethods.assert(_updateBalance(fromWalletId, tokenAddress, amount, "sub"), "sub balance in from wallet failed");
-            BasicMethods.assert(_updateBalance(toWalletId, tokenAddress, amount, "add"), "add balance in to wallet failed");
+            BasicMethods.assert(_updateBalance(fromWalletId, tokenAddress, amount, getStandardMathOperation().sub), "sub balance in from wallet failed");
+            BasicMethods.assert(_updateBalance(toWalletId, tokenAddress, amount, getStandardMathOperation().add), "add balance in to wallet failed");
 
             TransferToWallet(fromWalletId, toWalletId, tokenAddress, receiver, amount);
             return true;
@@ -306,20 +401,20 @@ namespace CelerWallet
 
             _onlyWalletOwner(walletId, invoker);
 
-            Wallet w = getWallet(walletId);
             // wpvBs means Wallet Proposal Votes ByteS
-            byte[] wpvBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(WalletsProposalVotesPrefix).Concat(walletId));
+            byte[] wpvBs = Storage.Get(Storage.CurrentContext, WalletsProposalVotesPrefix.Concat(walletId));
             Map<byte[], bool> wpv = new Map<byte[], bool>();
             if (wpvBs.Length > 0)
             {
                 wpv = Helper.Deserialize(wpvBs) as Map<byte[], bool>;
             }
-
+            Wallet w = getWallet(walletId);
             if (newOperator != w.proposedNewOperator)
             {
                 wpv = _clearVotes(w, wpv);
                 w.proposedNewOperator = newOperator;
             }
+            Storage.Put(Storage.CurrentContext, WalletsPrefix.Concat(walletId), Helper.Serialize(w));
             wpv[invoker] = true;
 
             if (_checkAllVotes(w, wpv))
@@ -327,9 +422,8 @@ namespace CelerWallet
                 _changeOperator(walletId, newOperator);
                 wpv = _clearVotes(w, wpv);
             }
-
-            Storage.Put(Storage.CurrentContext, WalletsPrefix.Concat(walletId), Helper.Serialize(w));
-            Storage.Put(Storage.CurrentContext, WalletsPrefix.Concat(WalletsProposalVotesPrefix).Concat(walletId), Helper.Serialize(wpv));
+            
+            Storage.Put(Storage.CurrentContext, WalletsProposalVotesPrefix.Concat(walletId), Helper.Serialize(wpv));
 
             ProposeNewOperator(walletId, newOperator, invoker);
             return true;
@@ -346,6 +440,16 @@ namespace CelerWallet
             _whenPaused();
             _onlyPauser(invoker);
 
+            BigInteger[] tokenValues = getTokenWithdraw();
+            if (tokenAddress.Equals(LedgerStruct.NeoAddress))
+            {
+                BasicMethods.assert(amount >= tokenValues[0], "amount is less than zero");
+            }
+            else if (tokenAddress.Equals(LedgerStruct.NeoAddress))
+            {
+                BasicMethods.assert(amount >= tokenValues[1], "amount is less than zero");
+            }
+
             BasicMethods.assert(_withdrawToken(tokenAddress, receiver, amount), "withdrawToken failed");
 
             DrainToken(tokenAddress, receiver, amount);
@@ -356,10 +460,7 @@ namespace CelerWallet
         public static byte[][] getWalletOwners(byte[] walletId)
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal");
-            byte[] walletBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(walletId));
-            Wallet w = new Wallet();
-            if (walletBs.Length > 0)
-                w = Helper.Deserialize(walletBs) as Wallet;
+            Wallet w = getWallet(walletId);
             return w.owners;
         }
 
@@ -367,10 +468,7 @@ namespace CelerWallet
         public static byte[] getOperator(byte[] walletId)
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal");
-            byte[] walletBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(walletId));
-            Wallet w = new Wallet();
-            if (walletBs.Length > 0)
-                w = Helper.Deserialize(walletBs) as Wallet;
+            Wallet w = getWallet(walletId);
             return w.theOperator;
         }
 
@@ -379,8 +477,12 @@ namespace CelerWallet
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(tokenAddress), "tokenAddress is illegal");
-            byte[] wBalanceBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(WalletsBalancesPrefix).Concat(walletId));
-            Map<byte[], BigInteger> wBalanceMap = Helper.Deserialize(wBalanceBs) as Map<byte[], BigInteger>;
+            Map<byte[], BigInteger> wBalanceMap = new Map<byte[], BigInteger>();
+            byte[] wBalanceBs = Storage.Get(Storage.CurrentContext, WalletsBalancesPrefix.Concat(walletId));
+            if (wBalanceBs.Length > 0)
+            {
+                wBalanceMap = Helper.Deserialize(wBalanceBs) as Map<byte[], BigInteger>;
+            }
             if (wBalanceMap.HasKey(tokenAddress))
             {
                 return wBalanceMap[tokenAddress];
@@ -392,11 +494,8 @@ namespace CelerWallet
         public static byte[] getProposedNewOperator(byte[] walletId)
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal");
-            Wallet w = new Wallet();
-            byte[] walletBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(walletId));
-            if (walletBs.Length > 0)
-                w = Helper.Deserialize(walletBs) as Wallet;
-            return w.theOperator;
+            Wallet w = getWallet(walletId);
+            return w.proposedNewOperator;
         }
 
         [DisplayName("getProposalVote")]
@@ -405,10 +504,8 @@ namespace CelerWallet
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(owner), "owner address is not length of 20 bytes");
             _onlyWalletOwner(walletId, owner);
-
-            Wallet w = getWallet(walletId);
             // wpvBs means Wallet Proposal Votes ByteS
-            byte[] wpvBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(WalletsProposalVotesPrefix).Concat(walletId));
+            byte[] wpvBs = Storage.Get(Storage.CurrentContext, WalletsProposalVotesPrefix.Concat(walletId));
             Map<byte[], bool> wpv = new Map<byte[], bool>();
             if (wpvBs.Length > 0)
             {
@@ -453,21 +550,21 @@ namespace CelerWallet
 
         private static bool _withdrawToken(byte[] _tokenAddress, byte[] _receiver, BigInteger _amount)
         {
+            if (_tokenAddress.Equals(LedgerStruct.NeoAddress) || _tokenAddress.Equals(LedgerStruct.GasAddress))
+            {
+                return true;
+            }
             NEP5Contract dyncall = (NEP5Contract)_tokenAddress.ToDelegate();
-            Object[] args = new object[] { ExecutionEngine.ExecutingScriptHash, _receiver, _amount };
-            bool res = (bool)dyncall("transfer", args);
+            bool res = (bool)dyncall("transfer", new object[] { ExecutionEngine.ExecutingScriptHash, _receiver, _amount });
             return res;
         }
 
-        private static bool _updateBalance(byte[] _walletId, byte[] _tokenAddress, BigInteger _amount, string _mathOperation)
+        private static bool _updateBalance(byte[] _walletId, byte[] _tokenAddress, BigInteger _amount, byte _mathOperation)
         {
-
             BasicMethods.assert(_amount >= 0, "amount is less than zero");
-
             Wallet w = getWallet(_walletId);
             BasicMethods.assert(BasicMethods._isLegalAddress(w.theOperator), "wallet Object does not exist");
-
-            byte[] wBalanceBs = Storage.Get(Storage.CurrentContext, WalletsPrefix.Concat(WalletsBalancesPrefix).Concat(_walletId));
+            byte[] wBalanceBs = Storage.Get(Storage.CurrentContext, WalletsBalancesPrefix.Concat(_walletId));
             Map<byte[], BigInteger> wBalanceMap = new Map<byte[], BigInteger>();
             if (wBalanceBs.Length > 0)
             {
@@ -477,11 +574,11 @@ namespace CelerWallet
             {
                 wBalanceMap[_tokenAddress] = 0;
             }
-            if (_mathOperation == "add")
+            if (_mathOperation == getStandardMathOperation().add)
             {
                 wBalanceMap[_tokenAddress] += _amount;
             }
-            else if (_mathOperation == "sub")
+            else if (_mathOperation == getStandardMathOperation().sub)
             {
                 wBalanceMap[_tokenAddress] -= _amount;
                 BasicMethods.assert(wBalanceMap[_tokenAddress] >= 0, "balance is less than zero");
@@ -490,21 +587,47 @@ namespace CelerWallet
             {
                 BasicMethods.assert(false, "math operation illegal");
             }
-            Storage.Put(Storage.CurrentContext, WalletsPrefix.Concat(WalletsBalancesPrefix).Concat(_walletId), Helper.Serialize(wBalanceMap));
+            Storage.Put(Storage.CurrentContext, WalletsBalancesPrefix.Concat(_walletId), Helper.Serialize(wBalanceMap));
             return true;
         }
 
-        public static bool _isWalletOwner(byte[] _walletId, byte[] _addr)
+        private static bool _isWalletOwner(byte[] _walletId, byte[] _addr)
         {
             Wallet w = getWallet(_walletId);
             for (var i = 0; i < w.owners.Length; i++)
             {
-                if (_addr == w.owners[i])
+                if (_addr.Equals(w.owners[i]))
                 {
                     return true;
                 }
             }
             return false;
+        }
+
+        private static BigInteger[] getTokenWithdraw ()
+        {
+            Transaction tx = ExecutionEngine.ScriptContainer as Transaction;
+            TransactionInput[] inputs = tx.GetInputs();
+            BigInteger neoAmount = 0;
+            BigInteger gasAmount = 0;
+            foreach (var input in inputs)
+            {
+                TransactionOutput output = Blockchain.GetTransaction(input.PrevHash).GetOutputs()[input.PrevIndex];
+                byte[] scriptHash = output.ScriptHash;
+                if (!scriptHash.Equals(ExecutionEngine.ExecutingScriptHash)) continue;
+                byte[] assetid = output.AssetId;
+                BigInteger value = output.Value;
+                if (assetid.Equals(LedgerStruct.NeoID))
+                {
+                    neoAmount += value;
+                }
+                else if (assetid.Equals(LedgerStruct.GasID))
+                {
+                    gasAmount += value;
+                }
+            }
+
+            return new BigInteger[] { neoAmount, gasAmount };
         }
 
         private static void _onlyPauser(byte[] invoker)
@@ -531,13 +654,17 @@ namespace CelerWallet
         public static object addPauser(byte[] invoker, byte[] account)
         {
             BasicMethods.assert(Runtime.CheckWitness(invoker), "Checkwitness failed");
-
             // make sure the invoker is one effective pauser
+            
+            Map<byte[], bool> pausers = new Map<byte[], bool>();
             byte[] pauserBs = Storage.Get(Storage.CurrentContext, PauserKey);
-            BasicMethods.assert(pauserBs.Length > 0, "pauser map is empty");
-            Map<byte[], bool> pausers = Helper.Deserialize(pauserBs) as Map<byte[], bool>;
-            BasicMethods.assert(pausers.HasKey(invoker), "invoker is not one pauser");
-            BasicMethods.assert(pausers[invoker], "invoker is an effective pauser");
+            if (pauserBs.Length > 0) pausers = Helper.Deserialize(pauserBs) as Map<byte[], bool>;
+            byte[] admin = BasicMethods.getAdmin();
+            if (!invoker.Equals(admin))
+            {
+                BasicMethods.assert(pausers.HasKey(invoker), "invoker is not one pauser");
+                BasicMethods.assert(pausers[invoker], "invoker is an effective pauser");
+            }
 
             // update the pausers map
             pausers[account] = true;
@@ -567,7 +694,7 @@ namespace CelerWallet
         
         public static bool getPausedStatus()
         {
-            return Storage.Get(Storage.CurrentContext, PausedKey) == new byte[] { 0x01 };
+            return Storage.Get(Storage.CurrentContext, PausedKey).Equals(new byte[] { 0x01 });
         }
 
         public static void _whenNotPaused()
@@ -577,7 +704,7 @@ namespace CelerWallet
 
         public static void _whenPaused()
         {
-            BasicMethods.assert(getPausedStatus(), "Pausable: paused");
+            BasicMethods.assert(getPausedStatus(), "Pausable: unpaused");
         }
 
         [DisplayName("pause")]
