@@ -587,7 +587,7 @@ public class PbEntity
         public TokenDistribution initDistribution;
         public BigInteger openDeadline;
         public BigInteger disputeTimeout;
-        public BigInteger msgValueReceiver;
+        public byte msgValueReceiver;
     }
     public static PaymentChannelInitializer decPaymentChannelInitializer(byte[] raw)
     {
@@ -612,7 +612,8 @@ public class PbEntity
 
         len = (int)raw.Range(seek, 2).AsBigInteger();
         seek += 2;
-        pci.msgValueReceiver = raw.Range(seek, len).AsBigInteger();
+        BasicMethods.assert(len == 1, "illegal length");
+        pci.msgValueReceiver = raw.Range(seek, len)[0];
         seek += len;
 
         BasicMethods.assert(raw.Length == seek, "decPaymentChannelInitializer raw data illegal");

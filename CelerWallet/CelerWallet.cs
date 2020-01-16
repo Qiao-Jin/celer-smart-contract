@@ -135,17 +135,15 @@ namespace CelerWallet
                 }
                 if (method == "depositneo")
                 {
-                    BasicMethods.assert(args.Length == 2, "params length error");
-                    byte[] invoker = (byte[])args[0];
-                    byte[] walletId = (byte[])args[1];
-                    return depositNEO(invoker, walletId);
+                    BasicMethods.assert(args.Length == 1, "params length error");
+                    byte[] walletId = (byte[])args[0];
+                    return depositNEO(walletId);
                 }
                 if (method == "depositgas")
                 {
-                    BasicMethods.assert(args.Length == 2, "params length error");
-                    byte[] invoker = (byte[])args[0];
-                    byte[] walletId = (byte[])args[1];
-                    return depositGAS(invoker, walletId);
+                    BasicMethods.assert(args.Length == 1, "params length error");
+                    byte[] walletId = (byte[])args[0];
+                    return depositGAS(walletId);
                 }
                 /*if (method == "depositNEP5")
                 {
@@ -250,6 +248,7 @@ namespace CelerWallet
         [DisplayName("create")]
         public static byte[] create(byte[] invoker, byte[][] owners, byte[] theOperator, byte[] nonce)
         {
+            Runtime.Notify("in");
             BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
             BasicMethods.assert(BasicMethods._isLegalAddresses(owners), "owners addresses are not byte20");
             BasicMethods.assert(BasicMethods._isLegalAddress(theOperator), "the operator is not byte20");
@@ -274,9 +273,8 @@ namespace CelerWallet
         }
 
         [DisplayName("depositNEO")]
-        public static object depositNEO(byte[] invoker, byte[] walletId)
+        public static object depositNEO(byte[] walletId)
         {
-            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
             PbEntity.TokenType token = PbEntity.getStandardTokenType();
             LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.NEO);
@@ -291,9 +289,8 @@ namespace CelerWallet
         }
 
         [DisplayName("depositGAS")]
-        public static object depositGAS(byte[] invoker, byte[] walletId)
+        public static object depositGAS(byte[] walletId)
         {
-            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
             PbEntity.TokenType token = PbEntity.getStandardTokenType();
             LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.GAS);

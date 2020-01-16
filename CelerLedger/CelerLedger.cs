@@ -25,6 +25,7 @@ namespace CelerLedger
         {
             if (Runtime.Trigger == TriggerType.Verification)
             {
+                //Pending verification
                 return true;
             }
             else if (Runtime.Trigger == TriggerType.Application)
@@ -55,34 +56,34 @@ namespace CelerLedger
                 }
                 if (operation == "openChannel")
                 {
-                    BasicMethods.assert(args.Length == 2, "openChannel parameter error");
-                    byte[] _openRequest = (byte[])args[0];
-                    BigInteger _value = (BigInteger)args[1];
-                    return openChannel(_openRequest, _value);
+                    BasicMethods.assert(args.Length == 3, "openChannel parameter error");
+                    byte[] invoker = (byte[])args[0];
+                    byte[] _openRequest = (byte[])args[1];
+                    byte[][] pubKeys = (byte[][])args[2];
+                    return openChannel(invoker, _openRequest, pubKeys);
                 }
                 if (operation == "deposit")
                 {
-                    BasicMethods.assert(args.Length == 4, "deposit parameter error");
+                    BasicMethods.assert(args.Length == 3, "deposit parameter error");
                     byte[] _channelId = (byte[])args[0];
                     byte[] _receiver = (byte[])args[1];
                     BigInteger _transferFromAmount = (BigInteger)args[2];
-                    BigInteger _value = (BigInteger)args[3];
-                    return deposit(_channelId, _receiver, _transferFromAmount, _value);
+                    return deposit(_channelId, _receiver, _transferFromAmount);
                 }
                 if (operation == "depositInBatch")
                 {
-                    BasicMethods.assert(args.Length == 4, "depositInBatch parameter error");
+                    BasicMethods.assert(args.Length == 3, "depositInBatch parameter error");
                     byte[][] _channelIds = (byte[][])args[0];
                     byte[][] _receivers = (byte[][])args[1];
                     BigInteger[] _transferFromAmounts = (BigInteger[])args[2];
-                    BigInteger[] _values = (BigInteger[])args[3];
-                    return depositInBatch(_channelIds, _receivers, _transferFromAmounts, _values);
+                    return depositInBatch(_channelIds, _receivers, _transferFromAmounts);
                 }
                 if (operation == "snapshotStates")
                 {
-                    BasicMethods.assert(args.Length == 1, "snapshotStates parameter error");
+                    BasicMethods.assert(args.Length == 2, "snapshotStates parameter error");
                     byte[] _signedSimplexStateArray = (byte[])args[0];
-                    return snapshotStates(_signedSimplexStateArray);
+                    byte[][] pubKeys = (byte[][])args[1];
+                    return snapshotStates(_signedSimplexStateArray, pubKeys);
                 }
                 if (operation == "intendWithdraw")
                 {
@@ -108,24 +109,26 @@ namespace CelerLedger
                 }
                 if (operation == "cooperativeWithdraw")
                 {
-                    BasicMethods.assert(args.Length == 1, "cooperativeWithdraw parameter error");
+                    BasicMethods.assert(args.Length == 2, "cooperativeWithdraw parameter error");
                     byte[] _cooperativeWithdrawRequest = (byte[])args[0];
-                    return cooperativeWithdraw(_cooperativeWithdrawRequest);
+                    byte[][] pubKeys = (byte[][])args[1];
+                    return cooperativeWithdraw(_cooperativeWithdrawRequest, pubKeys);
                 }
                 if (operation == "intendSettle")
                 {
-                    BasicMethods.assert(args.Length == 2, "intendSettle parameter error");
+                    BasicMethods.assert(args.Length == 3, "intendSettle parameter error");
                     byte[] _signedSimplexStateArray = (byte[])args[0];
                     byte[] _sender = (byte[])args[1];
-                    return intendSettle(_signedSimplexStateArray, _sender);
+                    byte[][] pubKeys = (byte[][])args[2];
+                    return intendSettle(_signedSimplexStateArray, _sender, pubKeys);
                 }
                 if (operation == "clearPays")
                 {
-                    BasicMethods.assert(args.Length == 4, "clearPays parameter error");
+                    BasicMethods.assert(args.Length == 3, "clearPays parameter error");
                     byte[] _channelId = (byte[])args[0];
                     byte[] _peerFrom = (byte[])args[1];
-                    byte[] _sender = (byte[])args[2];
-                    return clearPays(_channelId, _peerFrom, _sender);
+                    byte[] _payIdList = (byte[])args[2];
+                    return clearPays(_channelId, _peerFrom, _payIdList);
                 }
                 if (operation == "confirmSettle")
                 {
@@ -135,24 +138,25 @@ namespace CelerLedger
                 }
                 if (operation == "cooperativeSettle")
                 {
-                    BasicMethods.assert(args.Length == 1, "cooperativeSettle parameter error");
+                    BasicMethods.assert(args.Length == 2, "cooperativeSettle parameter error");
                     byte[] _settleRequest = (byte[])args[0];
-                    return cooperativeSettle(_settleRequest);
+                    byte[][] pubKeys = (byte[][])args[1];
+                    return cooperativeSettle(_settleRequest, pubKeys);
                 }
                 if (operation == "migrateChannelTo")
                 {
-                    BasicMethods.assert(args.Length == 2, "migrateChannelTo parameter error");
+                    BasicMethods.assert(args.Length == 3, "migrateChannelTo parameter error");
                     byte[] _migrationRequest = (byte[])args[0];
                     byte[] _sender = (byte[])args[1];
-                    return migrateChannelTo(_migrationRequest, _sender);
+                    byte[][] pubKeys = (byte[][])args[2];
+                    return migrateChannelTo(_migrationRequest, _sender, pubKeys);
                 }
                 if (operation == "migrateChannelFrom")
                 {
-                    BasicMethods.assert(args.Length == 3, "migrateChannelFrom parameter error");
+                    BasicMethods.assert(args.Length == 2, "migrateChannelFrom parameter error");
                     byte[] _fromLedgerAddr = (byte[])args[0];
                     byte[] _migrationRequest = (byte[])args[1];
-                    byte[] _sender = (byte[])args[2];
-                    return migrateChannelFrom(_fromLedgerAddr, _migrationRequest, _sender);
+                    return migrateChannelFrom(_fromLedgerAddr, _migrationRequest);
                 }
                 if (operation == "getSettleFinalizedTime")
                 {
@@ -325,40 +329,40 @@ namespace CelerLedger
         }
 
         [DisplayName("openChannel")]
-        public static bool openChannel(byte[] _openRequest, BigInteger _value)
+        public static bool openChannel(byte[] invoker, byte[] _openRequest, byte[][] pubKeys)
         {
             LedgerStruct.Ledger ledger = getLedger();
-            LedgerOperation.openChannelInner(ledger, _openRequest, _value, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
+            LedgerOperation.openChannelInner(invoker, ledger, pubKeys, _openRequest, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
         [DisplayName("deposit")]
-        public static bool deposit(byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, BigInteger _value)
+        public static bool deposit(byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount)
         {
             LedgerStruct.Ledger ledger = getLedger();
-            LedgerOperation.depositInner(ledger, _channelId, _receiver, _transferFromAmount, _value, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
+            LedgerOperation.depositInner(ledger, _channelId, _receiver, _transferFromAmount, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
         [DisplayName("depositInBatch")]
-        public static bool depositInBatch(byte[][] _channelIds, byte[][] _receivers, BigInteger[] _transferFromAmounts, BigInteger[] _values)
+        public static bool depositInBatch(byte[][] _channelIds, byte[][] _receivers, BigInteger[] _transferFromAmounts)
         {
             BasicMethods.assert(
-                _channelIds.Length == _receivers.Length && _receivers.Length == _transferFromAmounts.Length && _transferFromAmounts.Length == _values.Length,
+                _channelIds.Length == _receivers.Length && _receivers.Length == _transferFromAmounts.Length,
                 "Lengths do not match"
                 );
             bool balanceLimited = LedgerBalanceLimit.getBalanceLimitsEnabledInner();
             for (int i = 0; i < _channelIds.Length; i++)
             {
-                LedgerOperation.depositInner(getLedger(), _channelIds[i], _receivers[i], _transferFromAmounts[i], _values[i], balanceLimited);
+                LedgerOperation.depositInner(getLedger(), _channelIds[i], _receivers[i], _transferFromAmounts[i], balanceLimited);
             }
             return true;
         }
 
         [DisplayName("snapshotStates")]
-        public static bool snapshotStates(byte[] _signedSimplexStateArray)
+        public static bool snapshotStates(byte[] _signedSimplexStateArray, byte[][] pubKeys)
         {
-            LedgerOperation.snapshotStatesInner(getLedger(), _signedSimplexStateArray);
+            LedgerOperation.snapshotStatesInner(getLedger(), pubKeys, _signedSimplexStateArray);
             return true;
         }
 
@@ -384,16 +388,16 @@ namespace CelerLedger
         }
 
         [DisplayName("cooperativeWithdraw")]
-        public static bool cooperativeWithdraw(byte[] _cooperativeWithdrawRequest)
+        public static bool cooperativeWithdraw(byte[] _cooperativeWithdrawRequest, byte[][] pubKeys)
         {
-            LedgerOperation.cooperativeWithdrawInner(getLedger(), _cooperativeWithdrawRequest, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
+            LedgerOperation.cooperativeWithdrawInner(getLedger(), pubKeys, _cooperativeWithdrawRequest, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
         [DisplayName("intendSettle")]
-        public static bool intendSettle(byte[] _signedSimplexStateArray, byte[] _sender)
+        public static bool intendSettle(byte[] _signedSimplexStateArray, byte[] _sender, byte[][] pubKeys)
         {
-            LedgerOperation.intendSettleInner(_sender, getLedger(), _signedSimplexStateArray);
+            LedgerOperation.intendSettleInner(_sender, getLedger(), pubKeys, _signedSimplexStateArray);
             return true;
         }
 
@@ -412,22 +416,22 @@ namespace CelerLedger
         }
 
         [DisplayName("cooperativeSettle")]
-        public static bool cooperativeSettle(byte[] _settleRequest)
+        public static bool cooperativeSettle(byte[] _settleRequest, byte[][] pubKeys)
         {
-            LedgerOperation.cooperativeSettleInner(getLedger(), _settleRequest);
+            LedgerOperation.cooperativeSettleInner(getLedger(), pubKeys, _settleRequest);
             return true;
         }
 
         [DisplayName("migrateChannelTo")]
-        public static byte[] migrateChannelTo(byte[] _migrationRequest, byte[] sender)
+        public static byte[] migrateChannelTo(byte[] _migrationRequest, byte[] sender, byte[][] pubKeys)
         {
-            return LedgerMigrate.migrateChannelToInner(sender, getLedger(), _migrationRequest);
+            return LedgerMigrate.migrateChannelToInner(sender, getLedger(), pubKeys, _migrationRequest);
         }
 
         [DisplayName("migrateChannelFrom")]
-        public static bool migrateChannelFrom(byte[] _fromLedgerAddr, byte[] _migrationRequest, byte[] sender)
+        public static bool migrateChannelFrom(byte[] _fromLedgerAddr, byte[] _migrationRequest)
         {
-            LedgerMigrate.migrateChannelFromInner(sender, getLedger(), _fromLedgerAddr, _migrationRequest);
+            LedgerMigrate.migrateChannelFromInner(getLedger(), _fromLedgerAddr, _migrationRequest);
             return true;
         }
 
@@ -570,7 +574,7 @@ namespace CelerLedger
         [DisplayName("getChannelStatusNum")]
         public static BigInteger getChannelStatusNum(BigInteger _channelStatus)
         {
-            return LedgerOperation.getChannelStatusNumInner(getLedger(), _channelStatus);
+            return LedgerOperation.getChannelStatusNumInner(_channelStatus);
         }
 
         [DisplayName("getPayRegistry")]
@@ -600,8 +604,7 @@ namespace CelerLedger
 
         private static bool onlyOwner()
         {
-            //Pending
-            return true;
+            return Runtime.CheckWitness(BasicMethods.getAdmin());
         }
     }
 }

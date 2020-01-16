@@ -139,9 +139,9 @@ public class LedgerOperation : SmartContract
     }*/
 
     [DisplayName("openChannelInner")]
-    public static bool openChannelInner(LedgerStruct.Ledger _self, byte[] _openRequest, BigInteger _value, bool _balanceLimited)
+    public static bool openChannelInner(byte[] invoker, LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _openRequest, bool _balanceLimited)
     {
-        BasicMethods.assert(_value >= 0, "value is illegal");
+        BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
         PbChain.OpenChannelRequest openRequest = (PbChain.OpenChannelRequest)Neo.SmartContract.Framework.Helper.Deserialize(_openRequest);
         PbEntity.PaymentChannelInitializer channelInitializer = (PbEntity.PaymentChannelInitializer)Neo.SmartContract.Framework.Helper.Deserialize(openRequest.channelInitializer);
         PbEntity.TokenDistribution tokenDistribution = channelInitializer.initDistribution;
@@ -150,30 +150,36 @@ public class LedgerOperation : SmartContract
         BasicMethods.assert(Blockchain.GetHeight() <= channelInitializer.openDeadline, "Open deadline passed");
 
         PbEntity.TokenInfo token = tokenDistribution.token;
+        LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.tokenType);
+        BigInteger _value = transactionValue.value;
+        BasicMethods.assert(_value >= 0, "value is illegal");
+
         PbEntity.AccountAmtPair accountAmtPair0 = accountAmtPair[0];
         PbEntity.AccountAmtPair accountAmtPair1 = accountAmtPair[1];
         BigInteger[] amounts = new BigInteger[] { accountAmtPair0.amt, accountAmtPair1.amt };
         byte[][] peerAddrs = new byte[][] { accountAmtPair0.account, accountAmtPair1.account };
-        BasicMethods.assert(peerAddrs[0].ToBigInteger() < peerAddrs[1].ToBigInteger(), "Peer addrs are not ascending");
+        byte[] peerAddr0 = peerAddrs[0];
+        byte[] peerAddr1 = peerAddrs[1];
+        BasicMethods.assert(peerAddr0.ToBigInteger() < peerAddr1.ToBigInteger(), "Peer addrs are not ascending");
 
         byte[] celerWallet = _self.celerWallet;
         byte[] h = SmartContract.Hash256(openRequest.channelInitializer);
-
-        LedgerStruct.ChannelInfo channelInfo = _createWallet(_self, celerWallet, peerAddrs, h);
-
+        LedgerStruct.ChannelInfo channelInfo = _createWallet(invoker, _self, celerWallet, peerAddrs, h);
         LedgerStruct.Channel c = channelInfo.channel;
         c.disputeTimeout = channelInitializer.disputeTimeout;
         LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
-        c = _updateChannelStatus(_self, c, channelStatus.Operable);
+        c = _updateChannelStatus(c, channelStatus.Operable);
         c.token = _validateTokenInfo(token);
         LedgerStruct.PeerProfile peerProfile0 = c.peerProfiles[0];
         LedgerStruct.PeerProfile peerProfile1 = c.peerProfiles[1];
-        peerProfile0.peerAddr = peerAddrs[0];
+        peerProfile0.peerAddr = peerAddr0;
         peerProfile0.deposit = amounts[0];
-        peerProfile1.peerAddr = peerAddrs[1];
-        peerProfile0.deposit = amounts[0];
-        BasicMethods.assert(LedgerChannel._checkCoSignatures(c, h, openRequest.sigs), "Check co-sigs failed");
-
+        peerProfile1.peerAddr = peerAddr1;
+        peerProfile1.deposit = amounts[1];
+        c.peerProfiles[0] = peerProfile0;
+        c.peerProfiles[1] = peerProfile1;
+        BasicMethods.assert(LedgerChannel._checkCoSignatures(c, h, pubKeys, openRequest.sigs), "Check co-sigs failed");
+        LedgerStruct.setChannelMap(channelInfo.channelId, c);
         OpenChannelEvent(channelInfo.channelId, token.tokenType, token.address, peerAddrs, amounts);
 
         BigInteger amtSum = amounts[0] + amounts[1];
@@ -184,31 +190,76 @@ public class LedgerOperation : SmartContract
             return false;
         }
 
+        //Pending debugging
+        Runtime.Notify("9");
         // if total deposit is larger than 0
         if (_balanceLimited)
             BasicMethods.assert(amtSum <= LedgerBalanceLimit.getBalanceLimitInner(token.address), "Balance exceeds limit");
-
-        //Pending
-        LedgerStruct.setChannelMap(channelInfo.channelId, c);
+        Runtime.Notify("10");
+        PbEntity.TokenType tokenType = PbEntity.getStandardTokenType();
+        if (token.tokenType == tokenType.NEO || token.tokenType == tokenType.GAS)
+        {
+            byte msgValueReceiver = channelInitializer.msgValueReceiver;
+            Runtime.Notify("11");
+            BasicMethods.assert(msgValueReceiver == 0 || msgValueReceiver == 1, "Illegal msgValueReceiver");
+            BasicMethods.assert(_value == amounts[msgValueReceiver] + amounts[1 - msgValueReceiver], "value mismatch");
+            if (_value > 0)
+            {
+                if (token.tokenType == tokenType.NEO)
+                {
+                    Runtime.Notify("12");
+                    NEP5Contract dyncall = (NEP5Contract)celerWallet.ToDelegate();
+                    byte[] channelId = (byte[])dyncall("depositneo", new object[] { channelInfo.channelId });
+                }
+                else
+                {
+                    Runtime.Notify("13");
+                    NEP5Contract dyncall = (NEP5Contract)celerWallet.ToDelegate();
+                    byte[] channelId = (byte[])dyncall("depositgas", new object[] { channelInfo.channelId });
+                }
+            }
+        } else
+        {
+            Runtime.Notify("14");
+            BasicMethods.assert(false, "Unsupported token type");
+        }
+        
         return true;
     }
 
     [DisplayName("depositInner")]
-    public static bool depositInner(LedgerStruct.Ledger _self, byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, BigInteger _value, bool _balanceLimited)
+    public static bool depositInner(LedgerStruct.Ledger _self, byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, bool _balanceLimited)
     {
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId is illegal");
         BasicMethods.assert(BasicMethods._isLegalAddress(_receiver), "_receiver is illegal");
-        BasicMethods.assert(_transferFromAmount >= 0, "_transferFromAmount is illegal");
-        BasicMethods.assert(_value >= 0, "value is illegal");
 
-        _addDeposit(_self, _channelId, _receiver, _transferFromAmount + _value, _balanceLimited);
         LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
-        //Pending
+        PbEntity.TokenInfo token = c.token;
+        PbEntity.TokenType tokenType = PbEntity.getStandardTokenType();
+        LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.tokenType);
+        BigInteger _value = transactionValue.value;
+        BasicMethods.assert(_value >= 0, "value is illegal");
+        BasicMethods.assert(_value == _transferFromAmount, "value is not same as announced");
+
+        _addDeposit(_self, _channelId, _receiver, _value, _balanceLimited);
+        byte[] _w = _self.celerWallet;
+        if (token.tokenType == tokenType.NEO)
+        {
+            NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
+            dyncall("depositneo", new object[] { _channelId });
+        } else if (token.tokenType == tokenType.GAS)
+        {
+            NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
+            dyncall("depositgas", new object[] { _channelId });
+        } else
+        {
+            BasicMethods.assert(false, "Unsupported token type");
+        }
         return true;
     }
 
     [DisplayName("snapshotStatesInner")]
-    public static bool snapshotStatesInner(LedgerStruct.Ledger _self, byte[] _signedSimplexStateArray)
+    public static bool snapshotStatesInner(LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _signedSimplexStateArray)
     {
         PbChain.SignedSimplexStateArray signedSimplexStateArray = (PbChain.SignedSimplexStateArray)Neo.SmartContract.Framework.Helper.Deserialize(_signedSimplexStateArray);
         PbChain.SignedSimplexState[] signedSimplexStates = signedSimplexStateArray.signedSimplexStates;
@@ -228,7 +279,7 @@ public class LedgerOperation : SmartContract
             PbChain.SignedSimplexState signedSimplexStateI = signedSimplexStates[i];
             byte[] stateHash = SmartContract.Hash256(signedSimplexStateI.simplexState);
             byte[][] sigs = signedSimplexStateI.sigs;
-            BasicMethods.assert(LedgerChannel._checkCoSignatures(c, stateHash, sigs), "Check co-sigs failed");
+            BasicMethods.assert(LedgerChannel._checkCoSignatures(c, stateHash, pubKeys, sigs), "Check co-sigs failed");
             uint peerFromId = LedgerChannel._getPeerId(c, simplexState.peerFrom);
             LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
             LedgerStruct.PeerProfile peerProfile = peerProfiles[peerFromId];
@@ -287,14 +338,14 @@ public class LedgerOperation : SmartContract
         BasicMethods.assert(receiver.ToBigInteger() == 0, "Pending withdraw intent exists");
         BasicMethods.assert(LedgerChannel._isPeer(c, _sender), "Sender is not peer");
 
-        withdrawIntent.receiver = receiver;
+        withdrawIntent.receiver = _sender;
         withdrawIntent.amount = _amount;
         withdrawIntent.requestTime = Blockchain.GetHeight();
         withdrawIntent.recipientChannelId = _recipientChannelId;
         c.withdrawIntent = withdrawIntent;
         LedgerStruct.setChannelMap(_channelId, c);
 
-        IntendWithdrawEvent(_channelId, receiver, _amount);
+        IntendWithdrawEvent(_channelId, _sender, _amount);
         return true;
     }
 
@@ -368,7 +419,7 @@ public class LedgerOperation : SmartContract
     }
 
     [DisplayName("cooperativeWithdrawInner")]
-    public static bool cooperativeWithdrawInner(LedgerStruct.Ledger _self, byte[] _cooperativeWithdrawRequest, bool _balanceLimited)
+    public static bool cooperativeWithdrawInner(LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _cooperativeWithdrawRequest, bool _balanceLimited)
     {
         PbChain.CooperativeWithdrawRequest cooperativeWithdrawRequest =
             (PbChain.CooperativeWithdrawRequest)Neo.SmartContract.Framework.Helper.Deserialize(_cooperativeWithdrawRequest);
@@ -382,7 +433,7 @@ public class LedgerOperation : SmartContract
         BasicMethods.assert(c.status == channelStatus.Operable, "Channel status error");
         byte[] h = SmartContract.Hash256(cooperativeWithdrawRequest.withdrawInfo);
         BasicMethods.assert(
-            LedgerChannel._checkCoSignatures(c, h, cooperativeWithdrawRequest.sigs),
+            LedgerChannel._checkCoSignatures(c, h, pubKeys, cooperativeWithdrawRequest.sigs),
             "Check co-sigs failed"
         );
         // require an increment of exactly 1 for seqNum of each cooperative withdraw request
@@ -416,7 +467,7 @@ public class LedgerOperation : SmartContract
     }
 
     [DisplayName("intendSettleInner")]
-    public static bool intendSettleInner(byte[] _sender, LedgerStruct.Ledger _self, byte[] _signedSimplexStateArray)
+    public static bool intendSettleInner(byte[] _sender, LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _signedSimplexStateArray)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "sender illegal");
         PbChain.SignedSimplexStateArray signedSimplexStateArray =
@@ -455,10 +506,10 @@ public class LedgerOperation : SmartContract
             PbChain.SignedSimplexState stateI = states[i];
             byte[] stateHash = SmartContract.Hash256(stateI.simplexState);
             byte[][] sigs = stateI.sigs;
-
+            
             if (simplexState.seqNum > 0)
             {  // non-null state
-                BasicMethods.assert(LedgerChannel._checkCoSignatures(c, stateHash, sigs), "Check co-sigs failed");
+                BasicMethods.assert(LedgerChannel._checkCoSignatures(c, stateHash, pubKeys, sigs), "Check co-sigs failed");
                 byte peerFromId = LedgerChannel._getPeerId(c, simplexState.peerFrom);
                 LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
                 LedgerStruct.PeerProfile peerProfile = peerProfiles[peerFromId];
@@ -494,7 +545,10 @@ public class LedgerOperation : SmartContract
                 {
                     state.pendingPayOut = simplexState.totalPendingAmount;
                 }
-
+                peerProfile.state = state;
+                peerProfiles[peerFromId] = peerProfile;
+                c.peerProfiles = peerProfiles;
+                LedgerStruct.setChannelMap(currentChannelId, c);
                 _clearPays(_self, currentChannelId, peerFromId, simplexState.pendingPayIds);
             }
             else if (simplexState.seqNum == 0)
@@ -502,7 +556,7 @@ public class LedgerOperation : SmartContract
                 // this implies both stored seqNums are 0
                 BasicMethods.assert(c.settleFinalizedTime == 0, "intendSettle before");
                 BasicMethods.assert(
-                    sigs.Length == 1 && LedgerChannel._checkSingleSignature(c, stateHash, sigs[0]),
+                    sigs.Length == 1 && pubKeys.Length == 1 && LedgerChannel._checkSingleSignature(c, stateHash, pubKeys[0], sigs[0]),
                     "Check sig failed"
                 );
             }
@@ -513,7 +567,7 @@ public class LedgerOperation : SmartContract
 
             if (i == simplexStatesNum - 1)
             {
-                c = _updateOverallStatesByIntendState(_self, currentChannelId);
+                c = _updateOverallStatesByIntendState(currentChannelId);
             }
             else if (i < simplexStatesNum - 1)
             {
@@ -526,7 +580,7 @@ public class LedgerOperation : SmartContract
                 BasicMethods.assert(currentChannelId.ToBigInteger() <= channelId.ToBigInteger(), "Non-ascending channelIds");
                 if (currentChannelId.ToBigInteger() < channelId.ToBigInteger())
                 {
-                    c = _updateOverallStatesByIntendState(_self, currentChannelId);
+                    c = _updateOverallStatesByIntendState(currentChannelId);
                 }
             }
             else
@@ -550,13 +604,11 @@ public class LedgerOperation : SmartContract
         BasicMethods.assert(c.status == channelStatus.Settling, "Channel status error");
         byte peerFromId = LedgerChannel._getPeerId(c, _peerFrom);
         BasicMethods.assert(peerFromId == 0 || peerFromId == 1, "peerFromId illegal");
-
         byte[] listHash = SmartContract.Hash256(_payIdList);
         LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
         LedgerStruct.PeerProfile peerProfile = peerProfiles[peerFromId];
         LedgerStruct.PeerState state = peerProfile.state;
-        BasicMethods.assert(state.nextPayIdListHash == listHash, "List hash mismatch");
-
+        BasicMethods.assert(state.nextPayIdListHash.Equals(listHash), "List hash mismatch");
         PbEntity.PayIdList payIdList = (PbEntity.PayIdList)Neo.SmartContract.Framework.Helper.Deserialize(_payIdList);
         state.nextPayIdListHash = payIdList.nextListHash;
         LedgerStruct.setChannelMap(_channelId, c);
@@ -605,12 +657,13 @@ public class LedgerOperation : SmartContract
         LedgerStruct.SettleBalance settleBalance = LedgerChannel._validateSettleBalance(c);
         if (!(settleBalance.isSettled == 1))
         {
-            c = _resetDuplexState(_self, c);
+            c = _resetDuplexState(c);
+            LedgerStruct.setChannelMap(_channelId, c);
             ConfirmSettleFailEvent(_channelId);
             return false;
         }
 
-        c = _updateChannelStatus(_self, c, channelStatus.Closed);
+        c = _updateChannelStatus(c, channelStatus.Closed);
         LedgerStruct.setChannelMap(_channelId, c);
 
         ConfirmSettleEvent(_channelId, settleBalance.balance);
@@ -630,7 +683,7 @@ public class LedgerOperation : SmartContract
     }
 
     [DisplayName("cooperativeSettleInner")]
-    public static bool cooperativeSettleInner(LedgerStruct.Ledger _self, byte[] _settleRequest)
+    public static bool cooperativeSettleInner(LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _settleRequest)
     {
         PbChain.CooperativeSettleRequest settleRequest =
             (PbChain.CooperativeSettleRequest)Neo.SmartContract.Framework.Helper.Deserialize(_settleRequest);
@@ -647,7 +700,7 @@ public class LedgerOperation : SmartContract
         );
 
         byte[] h = SmartContract.Hash256(settleRequest.settleInfo);
-        BasicMethods.assert(LedgerChannel._checkCoSignatures(c, h, settleRequest.sigs), "Check co-sigs failed");
+        BasicMethods.assert(LedgerChannel._checkCoSignatures(c, h, pubKeys, settleRequest.sigs), "Check co-sigs failed");
 
         LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
         LedgerStruct.PeerProfile peerProfile0 = peerProfiles[0];
@@ -674,7 +727,7 @@ public class LedgerOperation : SmartContract
         BigInteger[] settleBalance = { settleBalance0.amt, settleBalance1.amt };
         BasicMethods.assert(settleBalance[0] + settleBalance[1] == LedgerChannel.getTotalBalanceInner(c), "Balance sum mismatch");
 
-        c = _updateChannelStatus(_self, c, channelStatus.Closed);
+        c = _updateChannelStatus(c, channelStatus.Closed);
         LedgerStruct.setChannelMap(channelId, c);
         CooperativeSettleEvent(channelId, settleBalance);
 
@@ -685,7 +738,7 @@ public class LedgerOperation : SmartContract
     }
 
     [DisplayName("getChannelStatusNumInner")]
-    public static BigInteger getChannelStatusNumInner(LedgerStruct.Ledger _self, BigInteger _channelStatus)
+    public static BigInteger getChannelStatusNumInner(BigInteger _channelStatus)
     {
         return LedgerStruct.getChannelStatusNums(_channelStatus);
     }
@@ -702,8 +755,9 @@ public class LedgerOperation : SmartContract
         return _self.celerWallet;
     }
 
-    private static LedgerStruct.ChannelInfo _createWallet(LedgerStruct.Ledger _self, byte[] _w, byte[][] _peers, byte[] _nonce)
+    private static LedgerStruct.ChannelInfo _createWallet(byte[] invoker, LedgerStruct.Ledger _self, byte[] _w, byte[][] _peers, byte[] _nonce)
     {
+        BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
         BasicMethods.assert(BasicMethods._isLegalAddress(_w), "_w illegal");
         BasicMethods.assert(_peers.Length == 2, "_peers length illegal");
         byte[] peer0 = _peers[0];
@@ -711,15 +765,14 @@ public class LedgerOperation : SmartContract
         BasicMethods.assert(BasicMethods._isLegalAddress(peer0), "_peer0 illegal");
         BasicMethods.assert(BasicMethods._isLegalAddress(peer1), "_peer1 illegal");
         BasicMethods.assert(BasicMethods._isByte32(_nonce), "_nonce illegal");
-
         byte[][] owners = new byte[2][];
-        owners[0] = (byte[])peer0.Clone();
-        owners[1] = (byte[])peer1.Clone();
 
+        owners[0] = BasicMethods.clone(peer0);
+        owners[1] = BasicMethods.clone(peer1);
+        
+        object[] args = new object[] { invoker, owners, ExecutionEngine.ExecutingScriptHash, _nonce };
         NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
-        Object[] args = new object[] { Blockchain.GetValidators()[0], owners, ExecutionEngine.ExecutingScriptHash, _nonce };
         byte[] channelId = (byte[])dyncall("create", args);
-
         BasicMethods.assert(channelId.ToBigInteger() != 0, "channelId gets 0");
         LedgerStruct.Channel c = LedgerStruct.getChannelMap(channelId);
         LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
@@ -820,11 +873,11 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    private static LedgerStruct.Channel _resetDuplexState(LedgerStruct.Ledger _self, LedgerStruct.Channel c)
+    private static LedgerStruct.Channel _resetDuplexState(LedgerStruct.Channel c)
     {
         LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
         c.settleFinalizedTime = 0;
-        c = _updateChannelStatus(_self, c, channelStatus.Operable);
+        c = _updateChannelStatus(c, channelStatus.Operable);
         c.peerProfiles = null;
         // reset possibly remaining WithdrawIntent freezed by previous intendSettle()
         LedgerStruct.WithdrawIntent withdrawIntent = c.withdrawIntent;
@@ -882,18 +935,18 @@ public class LedgerOperation : SmartContract
         return true;
     }
 
-    private static LedgerStruct.Channel _updateOverallStatesByIntendState(LedgerStruct.Ledger _self, byte[] _channelId)
+    private static LedgerStruct.Channel _updateOverallStatesByIntendState(byte[] _channelId)
     {
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
         LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
         c.settleFinalizedTime = Blockchain.GetHeight() + c.disputeTimeout;
         LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
-        c = _updateChannelStatus(_self, c, channelStatus.Settling);
+        c = _updateChannelStatus(c, channelStatus.Settling);
         IntendSettleEvent(_channelId, LedgerChannel._getStateSeqNums(c));
         return c;
     }
 
-    public static LedgerStruct.Channel _updateChannelStatus(LedgerStruct.Ledger _self, LedgerStruct.Channel _c, byte _newStatus)
+    public static LedgerStruct.Channel _updateChannelStatus(LedgerStruct.Channel _c, byte _newStatus)
     {
         if (_c.status == _newStatus)
         {
@@ -916,7 +969,22 @@ public class LedgerOperation : SmartContract
     private static PbEntity.TokenInfo _validateTokenInfo(PbEntity.TokenInfo _token)
     {
         PbEntity.TokenType tokenType = PbEntity.getStandardTokenType();
-        //Pending
+        if (_token.tokenType == tokenType.NEO)
+        {
+            BasicMethods.assert(_token.address.Equals(LedgerStruct.NeoAddress), "token address is not Neo address");
+        }
+        else if (_token.tokenType == tokenType.GAS)
+        {
+            BasicMethods.assert(_token.address.Equals(LedgerStruct.GasAddress), "token address is not Gas address");
+        }
+        else if (_token.tokenType == tokenType.NEP5)
+        {
+            BasicMethods.assert(BasicMethods._isLegalAddress(_token.address), "token address is not NEP5 address");
+        }
+        else
+        {
+            BasicMethods.assert(false, "invalid token type");
+        }
         return _token;
     }
 }

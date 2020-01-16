@@ -15,7 +15,7 @@ public class LedgerMigrate : SmartContract
     public static event Action<byte[], byte[]> MigrateChannelFromEvent;
 
     [DisplayName("migrateChannelToInner")]
-    public static byte[] migrateChannelToInner(byte[] sender, LedgerStruct.Ledger _self, byte[] _migrationRequest)
+    public static byte[] migrateChannelToInner(byte[] sender, LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _migrationRequest)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(sender), "sender illegal");
         PbChain.ChannelMigrationRequest migrationRequest =
@@ -35,12 +35,12 @@ public class LedgerMigrate : SmartContract
         byte[] h = Hash256(migrationRequest.channelMigrationInfo);
         // use Channel Library instead
 
-        BasicMethods.assert(LedgerChannel._checkCoSignatures(c, h, migrationRequest.sigs), "Check co-sigs failed");
+        BasicMethods.assert(LedgerChannel._checkCoSignatures(c, h, pubKeys, migrationRequest.sigs), "Check co-sigs failed");
         BasicMethods.assert(migrationInfo.fromLedgerAddress.Equals(ExecutionEngine.ExecutingScriptHash), "From ledger address is not this");
         BasicMethods.assert(toLedgerAddr.Equals(sender), "To ledger address is not msg.sender");
         BasicMethods.assert(Blockchain.GetHeight() <= migrationInfo.migrationDeadline, "Passed migration deadline");
 
-        c = LedgerOperation._updateChannelStatus(_self, c, channelStatus.Migrated);
+        c = LedgerOperation._updateChannelStatus(c, channelStatus.Migrated);
         c.migratedTo = toLedgerAddr;
         LedgerStruct.setChannelMap(channelId, c);
         MigrateChannelToEvent(channelId, toLedgerAddr);
@@ -55,9 +55,8 @@ public class LedgerMigrate : SmartContract
     }
 
     [DisplayName("migrateChannelFromInner")]
-    public static bool migrateChannelFromInner(byte[] sender, LedgerStruct.Ledger _self, byte[] _fromLedgerAddr, byte[] _migrationRequest)
+    public static bool migrateChannelFromInner(LedgerStruct.Ledger _self, byte[] _fromLedgerAddr, byte[] _migrationRequest)
     {
-        BasicMethods.assert(BasicMethods._isLegalAddress(sender), "sender illegal");
         BasicMethods.assert(BasicMethods._isLegalAddress(_fromLedgerAddr), "_fromLedgerAddr illegal");
 
         // TODO: latest version of openzeppelin Address.sol provide this api toPayable()
@@ -81,7 +80,7 @@ public class LedgerMigrate : SmartContract
             "Operatorship not transferred"
         );
 
-        c = LedgerOperation._updateChannelStatus(_self, c, channelStatus.Operable);
+        c = LedgerOperation._updateChannelStatus(c, channelStatus.Operable);
         // Do not migrate WithdrawIntent, in other words, migration will implicitly veto
         // pending WithdrawIntent if any.
         c = LedgerChannel._importChannelMigrationArgs(c, fromLedgerAddrPayable, channelId);

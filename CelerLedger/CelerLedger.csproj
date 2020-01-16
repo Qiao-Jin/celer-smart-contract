@@ -8,8 +8,8 @@
     <ProjectGuid>{560C7A14-D518-4C5A-BF8D-BF706D8AEF7C}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LedgerStruct</RootNamespace>
-    <AssemblyName>LedgerStruct</AssemblyName>
+    <RootNamespace>CelerLedger</RootNamespace>
+    <AssemblyName>CelerLedger</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
