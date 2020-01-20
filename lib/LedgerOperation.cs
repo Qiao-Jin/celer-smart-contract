@@ -139,9 +139,8 @@ public class LedgerOperation : SmartContract
     }*/
 
     [DisplayName("openChannelInner")]
-    public static bool openChannelInner(byte[] invoker, LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _openRequest, bool _balanceLimited)
+    public static bool openChannelInner(LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _openRequest, bool _balanceLimited)
     {
-        BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
         PbChain.OpenChannelRequest openRequest = (PbChain.OpenChannelRequest)Neo.SmartContract.Framework.Helper.Deserialize(_openRequest);
         PbEntity.PaymentChannelInitializer channelInitializer = (PbEntity.PaymentChannelInitializer)Neo.SmartContract.Framework.Helper.Deserialize(openRequest.channelInitializer);
         PbEntity.TokenDistribution tokenDistribution = channelInitializer.initDistribution;
@@ -164,7 +163,7 @@ public class LedgerOperation : SmartContract
 
         byte[] celerWallet = _self.celerWallet;
         byte[] h = SmartContract.Hash256(openRequest.channelInitializer);
-        LedgerStruct.ChannelInfo channelInfo = _createWallet(invoker, _self, celerWallet, peerAddrs, h);
+        LedgerStruct.ChannelInfo channelInfo = _createWallet(_self, celerWallet, peerAddrs, h);
         LedgerStruct.Channel c = channelInfo.channel;
         c.disputeTimeout = channelInitializer.disputeTimeout;
         LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
@@ -324,6 +323,7 @@ public class LedgerOperation : SmartContract
     public static bool intendWithdrawInner(byte[] _sender, LedgerStruct.Ledger _self, byte[] _channelId, BigInteger _amount, byte[] _recipientChannelId)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "sender illegal");
+        BasicMethods.assert(Runtime.CheckWitness(_sender), "sender check witness failed");
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
         BasicMethods.assert(_amount >= 0, "_amount illegal");
         BasicMethods.assert(BasicMethods._isByte32(_recipientChannelId), "_recipientChannelId illegal");
@@ -400,6 +400,7 @@ public class LedgerOperation : SmartContract
     public static bool vetoWithdrawInner(byte[] _sender, LedgerStruct.Ledger _self, byte[] _channelId)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "sender illegal");
+        BasicMethods.assert(Runtime.CheckWitness(_sender), "sender check witness failed");
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
         LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
         LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
@@ -470,6 +471,7 @@ public class LedgerOperation : SmartContract
     public static bool intendSettleInner(byte[] _sender, LedgerStruct.Ledger _self, byte[][] pubKeys, byte[] _signedSimplexStateArray)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "sender illegal");
+        BasicMethods.assert(Runtime.CheckWitness(_sender), "sender check witness failed");
         PbChain.SignedSimplexStateArray signedSimplexStateArray =
             (PbChain.SignedSimplexStateArray)Neo.SmartContract.Framework.Helper.Deserialize(_signedSimplexStateArray);
         PbChain.SignedSimplexState[] states = signedSimplexStateArray.signedSimplexStates;
@@ -755,9 +757,8 @@ public class LedgerOperation : SmartContract
         return _self.celerWallet;
     }
 
-    private static LedgerStruct.ChannelInfo _createWallet(byte[] invoker, LedgerStruct.Ledger _self, byte[] _w, byte[][] _peers, byte[] _nonce)
+    private static LedgerStruct.ChannelInfo _createWallet(LedgerStruct.Ledger _self, byte[] _w, byte[][] _peers, byte[] _nonce)
     {
-        BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
         BasicMethods.assert(BasicMethods._isLegalAddress(_w), "_w illegal");
         BasicMethods.assert(_peers.Length == 2, "_peers length illegal");
         byte[] peer0 = _peers[0];
@@ -770,7 +771,7 @@ public class LedgerOperation : SmartContract
         owners[0] = BasicMethods.clone(peer0);
         owners[1] = BasicMethods.clone(peer1);
         
-        object[] args = new object[] { invoker, owners, ExecutionEngine.ExecutingScriptHash, _nonce };
+        object[] args = new object[] { owners, ExecutionEngine.ExecutingScriptHash, _nonce };
         NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
         byte[] channelId = (byte[])dyncall("create", args);
         BasicMethods.assert(channelId.ToBigInteger() != 0, "channelId gets 0");

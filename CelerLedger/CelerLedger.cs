@@ -1,5 +1,6 @@
 ﻿using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
+using Neo.SmartContract.Framework.Services.System;
 using System;
 using System.ComponentModel;
 using System.Numerics;
@@ -56,11 +57,10 @@ namespace CelerLedger
                 }
                 if (operation == "openChannel")
                 {
-                    BasicMethods.assert(args.Length == 3, "openChannel parameter error");
-                    byte[] invoker = (byte[])args[0];
-                    byte[] _openRequest = (byte[])args[1];
-                    byte[][] pubKeys = (byte[][])args[2];
-                    return openChannel(invoker, _openRequest, pubKeys);
+                    BasicMethods.assert(args.Length == 2, "openChannel parameter error");
+                    byte[] _openRequest = (byte[])args[0];
+                    byte[][] pubKeys = (byte[][])args[1];
+                    return openChannel(_openRequest, pubKeys);
                 }
                 if (operation == "deposit")
                 {
@@ -145,18 +145,19 @@ namespace CelerLedger
                 }
                 if (operation == "migrateChannelTo")
                 {
-                    BasicMethods.assert(args.Length == 3, "migrateChannelTo parameter error");
+                    BasicMethods.assert(args.Length == 2, "migrateChannelTo parameter error");
                     byte[] _migrationRequest = (byte[])args[0];
-                    byte[] _sender = (byte[])args[1];
-                    byte[][] pubKeys = (byte[][])args[2];
-                    return migrateChannelTo(_migrationRequest, _sender, pubKeys);
+                    byte[][] pubKeys = (byte[][])args[1];
+                    byte[] sender = ExecutionEngine.CallingScriptHash;
+                    return migrateChannelTo(_migrationRequest, sender, pubKeys);
                 }
                 if (operation == "migrateChannelFrom")
                 {
-                    BasicMethods.assert(args.Length == 2, "migrateChannelFrom parameter error");
+                    BasicMethods.assert(args.Length == 3, "migrateChannelFrom parameter error");
                     byte[] _fromLedgerAddr = (byte[])args[0];
                     byte[] _migrationRequest = (byte[])args[1];
-                    return migrateChannelFrom(_fromLedgerAddr, _migrationRequest);
+                    byte[][] pubKeys = (byte[][])args[2];
+                    return migrateChannelFrom(_fromLedgerAddr, _migrationRequest, pubKeys);
                 }
                 if (operation == "getSettleFinalizedTime")
                 {
@@ -329,10 +330,10 @@ namespace CelerLedger
         }
 
         [DisplayName("openChannel")]
-        public static bool openChannel(byte[] invoker, byte[] _openRequest, byte[][] pubKeys)
+        public static bool openChannel(byte[] _openRequest, byte[][] pubKeys)
         {
             LedgerStruct.Ledger ledger = getLedger();
-            LedgerOperation.openChannelInner(invoker, ledger, pubKeys, _openRequest, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
+            LedgerOperation.openChannelInner(ledger, pubKeys, _openRequest, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
@@ -429,9 +430,9 @@ namespace CelerLedger
         }
 
         [DisplayName("migrateChannelFrom")]
-        public static bool migrateChannelFrom(byte[] _fromLedgerAddr, byte[] _migrationRequest)
+        public static bool migrateChannelFrom(byte[] _fromLedgerAddr, byte[] _migrationRequest, byte[][] pubKeys)
         {
-            LedgerMigrate.migrateChannelFromInner(getLedger(), _fromLedgerAddr, _migrationRequest);
+            LedgerMigrate.migrateChannelFromInner(getLedger(), _fromLedgerAddr, _migrationRequest, pubKeys);
             return true;
         }
 

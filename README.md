@@ -10,7 +10,7 @@ Nep5
 CelerLedgerMock
 PayResolver
 CelerWallet
-CelerLedger (except migrateChannelTo/migrateChannelFrom, some cases in openChannel, etc)
+CelerLedger (except some cases in openChannel, etc)
 
 Todo:
 Peer checking still waits for a new feature to be added: https://github.com/neo-project/neo/issues/1411

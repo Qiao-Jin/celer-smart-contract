@@ -261,27 +261,36 @@ public class LedgerChannel
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_fromLedgerAddr), "invalid contract address");
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "invalid _channelId");
-
+        object[] input = new object[] { _channelId };
         DynamicCallContract dyncall = (DynamicCallContract)_fromLedgerAddr.ToDelegate();
-        LedgerStruct.PeersMigrationInfo args = (LedgerStruct.PeersMigrationInfo)dyncall("getPeersMigrationInfo", new object[] { _channelId });
+        LedgerStruct.PeersMigrationInfo args = (LedgerStruct.PeersMigrationInfo)dyncall("getPeersMigrationInfo", input);
         byte[][] peerAddr = args.peerAddr;
         BigInteger[] deposit = args.deposit;
         BigInteger[] withdrawal = args.withdrawal;
         BigInteger[] seqNum = args.seqNum;
         BigInteger[] transferOut = args.transferOut;
         BigInteger[] pendingPayout = args.pendingPayout;
+        LedgerStruct.PeerProfile[] peerProfiles = _c.peerProfiles;
         for (int i = 0; i < 2; i++)
         {
-            LedgerStruct.PeerProfile peerProfile = new LedgerStruct.PeerProfile();
-            peerProfile.peerAddr = peerAddr[i];
-            peerProfile.deposit = deposit[i];
-            peerProfile.withdrawal = withdrawal[i];
-            LedgerStruct.PeerState peerState = peerProfile.state;
-            peerState.seqNum = seqNum[i];
-            peerState.transferOut = transferOut[i];
-            peerState.pendingPayOut = pendingPayout[i];
-            peerProfile.state = peerState;
-            _c.peerProfiles[i] = peerProfile;
+            LedgerStruct.PeerProfile originalPeerProfile = peerProfiles[i];
+            LedgerStruct.PeerState originaPeerState = originalPeerProfile.state;
+            LedgerStruct.PeerState peerState = new LedgerStruct.PeerState
+            {
+                seqNum = seqNum[i],
+                transferOut = transferOut[i],
+                nextPayIdListHash = originaPeerState.nextPayIdListHash,
+                lastPayResolveDeadline = originaPeerState.lastPayResolveDeadline,
+                pendingPayOut = pendingPayout[i]
+            };
+            LedgerStruct.PeerProfile peerProfile = new LedgerStruct.PeerProfile()
+            {
+                peerAddr = peerAddr[i],
+                deposit = deposit[i],
+                withdrawal = withdrawal[i],
+                state = peerState
+            };
+            peerProfiles[i] = peerProfile;
         }
         return _c;
     }

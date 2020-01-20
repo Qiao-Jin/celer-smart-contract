@@ -126,11 +126,11 @@ namespace CelerWallet
                 }
                 if (method == "create")
                 {
-                    BasicMethods.assert(args.Length == 4, "params length error");
-                    byte[] invoker = (byte[])args[0];
-                    byte[][] owners = (byte[][])args[1];
-                    byte[] theOperator = (byte[])args[2];
-                    byte[] nonce = (byte[])args[3];
+                    BasicMethods.assert(args.Length == 3, "params length error");
+                    byte[] invoker = ExecutionEngine.CallingScriptHash;
+                    byte[][] owners = (byte[][])args[0];
+                    byte[] theOperator = (byte[])args[1];
+                    byte[] nonce = (byte[])args[2];
                     return create(invoker, owners, theOperator, nonce);
                 }
                 if (method == "depositneo")
@@ -161,7 +161,7 @@ namespace CelerWallet
                     byte[] tokenAddress = (byte[])args[1];
                     byte[] receiver = (byte[])args[2];
                     BigInteger amount = (BigInteger)args[3];
-                    return withdraw(invoker, tokenAddress, receiver, amount);
+                    return withdraw(invoker, tokenAddress, receiver, amount, ExecutionEngine.CallingScriptHash);
                 }
                 if (method == "transferToWallet")
                 {
@@ -171,14 +171,14 @@ namespace CelerWallet
                     byte[] tokenAddress = (byte[])args[2];
                     byte[] receiver = (byte[])args[3];
                     BigInteger amount = (BigInteger)args[4];
-                    return transferToWallet(fromWalletId, toWalletId, tokenAddress, receiver, amount);
+                    return transferToWallet(fromWalletId, toWalletId, tokenAddress, receiver, amount, ExecutionEngine.CallingScriptHash);
                 }
                 if (method == "transferOperatorship")
                 {
                     BasicMethods.assert(args.Length == 2, "params length error");
                     byte[] walletId = (byte[])args[0];
                     byte[] newOperator = (byte[])args[1];
-                    return transferOperatorship(walletId, newOperator);
+                    return transferOperatorship(walletId, newOperator, ExecutionEngine.CallingScriptHash);
                 }
                 if (method == "proposeNewOperator")
                 {
@@ -235,9 +235,10 @@ namespace CelerWallet
             return (Wallet)Helper.Deserialize(walletBs);
         }
 
-        public static void _onlyOperator(byte[] _walletId)
+        public static void _onlyOperator(byte[] _walletId, byte[] callingScriptHash)
         {
-            BasicMethods.assert(Runtime.CheckWitness(getWallet(_walletId).theOperator), "operator checkwitness failed");
+            //BasicMethods.assert(Runtime.CheckWitness(getWallet(_walletId).theOperator), "operator checkwitness failed");
+            BasicMethods.assert(getWallet(_walletId).theOperator.Equals(callingScriptHash), "operator checkwitness failed");
         }
 
         public static void _onlyWalletOwner(byte[] _walletId, byte[] _addr)
@@ -248,8 +249,6 @@ namespace CelerWallet
         [DisplayName("create")]
         public static byte[] create(byte[] invoker, byte[][] owners, byte[] theOperator, byte[] nonce)
         {
-            Runtime.Notify("in");
-            BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
             BasicMethods.assert(BasicMethods._isLegalAddresses(owners), "owners addresses are not byte20");
             BasicMethods.assert(BasicMethods._isLegalAddress(theOperator), "the operator is not byte20");
             //TODO: no need to check the nonce byte[] length
@@ -327,7 +326,7 @@ namespace CelerWallet
 
         [DisplayName("withdraw")]
         //需要重写
-        public static object withdraw(byte[] walletId, byte[] tokenAddress, byte[] receiver, BigInteger amount)
+        public static object withdraw(byte[] walletId, byte[] tokenAddress, byte[] receiver, BigInteger amount, byte[] callingScriptHash)
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal, not byte32");
             BasicMethods.assert(BasicMethods._isLegalAddress(tokenAddress), "tokenAddress is illegal");
@@ -345,7 +344,7 @@ namespace CelerWallet
             }
 
             _whenNotPaused();
-            _onlyOperator(walletId);
+            _onlyOperator(walletId, callingScriptHash);
             _onlyWalletOwner(walletId, receiver);
 
             BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, getStandardMathOperation().sub), "updateBalance failed");
@@ -355,7 +354,7 @@ namespace CelerWallet
         }
 
         [DisplayName("transferToWallet")]
-        public static object transferToWallet(byte[] fromWalletId, byte[] toWalletId, byte[] tokenAddress, byte[] receiver, BigInteger amount)
+        public static object transferToWallet(byte[] fromWalletId, byte[] toWalletId, byte[] tokenAddress, byte[] receiver, BigInteger amount, byte[] callingScriptHash)
         {
             BasicMethods.assert(BasicMethods._isByte32(fromWalletId), "fromWalletId illegal, not byte32");
             BasicMethods.assert(BasicMethods._isByte32(toWalletId), "toWalletId illegal, not byte32");
@@ -365,7 +364,7 @@ namespace CelerWallet
             BasicMethods.assert(Runtime.CheckWitness(receiver), "CheckWitness failed");
 
             _whenNotPaused();
-            _onlyOperator(fromWalletId);
+            _onlyOperator(fromWalletId, callingScriptHash);
             _onlyWalletOwner(fromWalletId, receiver);
             _onlyWalletOwner(toWalletId, receiver);
 
@@ -377,14 +376,14 @@ namespace CelerWallet
         }
 
         [DisplayName("transferOperatorship")]
-        public static object transferOperatorship(byte[] walletId, byte[] newOperator)
+        public static object transferOperatorship(byte[] walletId, byte[] newOperator, byte[] callingScriptHash)
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal, not byte32");
             BasicMethods.assert(BasicMethods._isLegalAddress(newOperator), "newOperator address is illegal");
             // no need to checkwitness since _onlyOperator has already done it
 
             _whenNotPaused();
-            _onlyOperator(walletId);
+            _onlyOperator(walletId, callingScriptHash);
             _changeOperator(walletId, newOperator);
             return true;
         }

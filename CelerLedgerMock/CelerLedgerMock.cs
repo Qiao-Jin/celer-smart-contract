@@ -540,7 +540,8 @@ namespace CelerLedgerMock
         public static bool vetoWithdraw(byte[] _channelId, byte[] _sender)
         {
             BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId illegal");
-            BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "_channelId illegal");
+            BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "_sender illegal");
+            BasicMethods.assert(Runtime.CheckWitness(_sender), "_sender check witness failed");
 
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
             LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();

@@ -55,7 +55,7 @@ public class LedgerMigrate : SmartContract
     }
 
     [DisplayName("migrateChannelFromInner")]
-    public static bool migrateChannelFromInner(LedgerStruct.Ledger _self, byte[] _fromLedgerAddr, byte[] _migrationRequest)
+    public static bool migrateChannelFromInner(LedgerStruct.Ledger _self, byte[] _fromLedgerAddr, byte[] _migrationRequest, byte[][] pubKeys)
     {
         BasicMethods.assert(BasicMethods._isLegalAddress(_fromLedgerAddr), "_fromLedgerAddr illegal");
 
@@ -63,23 +63,22 @@ public class LedgerMigrate : SmartContract
         byte[] fromLedgerAddrPayable = _fromLedgerAddr;
 
         NEP5Contract dyncall = (NEP5Contract)fromLedgerAddrPayable.ToDelegate();
-        Object[] args = new object[] { _migrationRequest };
+        Object[] args = new object[] { _migrationRequest, pubKeys };
         byte[] channelId = (byte[])dyncall("migrateChannelTo", args);
         
         LedgerStruct.Channel c = LedgerStruct.getChannelMap(channelId);
         LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
         BasicMethods.assert(c.status == channelStatus.Uninitialized, "Immigrated channel already exists");
-
+        
         byte[] celerWallet = _self.celerWallet;
-        dyncall = (NEP5Contract)celerWallet.ToDelegate();
         args = new object[] { channelId };
+        dyncall = (NEP5Contract)celerWallet.ToDelegate();
         byte[] oper = (byte[])dyncall("getOperator", args);
-
         BasicMethods.assert(
             oper.Equals(ExecutionEngine.ExecutingScriptHash),
             "Operatorship not transferred"
         );
-
+        
         c = LedgerOperation._updateChannelStatus(c, channelStatus.Operable);
         // Do not migrate WithdrawIntent, in other words, migration will implicitly veto
         // pending WithdrawIntent if any.
