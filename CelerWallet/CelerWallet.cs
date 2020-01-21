@@ -276,14 +276,13 @@ namespace CelerWallet
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
             PbEntity.TokenType token = PbEntity.getStandardTokenType();
-            LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.NEO);
-            BasicMethods.assert(transactionValue.value >= 0, "amount is less than zero");
-            BasicMethods.assert(transactionValue.receiver.Equals(ExecutionEngine.ExecutingScriptHash) , "token receiver is not current smart contract");
+            BigInteger value = LedgerStruct.getTransactionValue(token.NEO, ExecutionEngine.EntryScriptHash);
+            BasicMethods.assert(value >= 0, "amount is less than zero");
 
             _whenNotPaused();
-            BasicMethods.assert(_updateBalance(walletId, LedgerStruct.NeoAddress, transactionValue.value, getStandardMathOperation().add), "updateBalance failed");
+            BasicMethods.assert(_updateBalance(walletId, LedgerStruct.NeoAddress, value, getStandardMathOperation().add), "updateBalance failed");
 
-            DepositToWallet(walletId, LedgerStruct.NeoAddress, transactionValue.value);
+            DepositToWallet(walletId, LedgerStruct.NeoAddress, value);
             return true;
         }
 
@@ -292,15 +291,14 @@ namespace CelerWallet
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
             PbEntity.TokenType token = PbEntity.getStandardTokenType();
-            LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.GAS);
-            BasicMethods.assert(transactionValue.value >= 0, "amount is less than zero");
-            BasicMethods.assert(transactionValue.receiver.Equals(ExecutionEngine.ExecutingScriptHash), "token receiver is not current smart contract");
+            BigInteger value = LedgerStruct.getTransactionValue(token.GAS, ExecutionEngine.EntryScriptHash);
+            BasicMethods.assert(value >= 0, "amount is less than zero");
 
             _whenNotPaused();
 
-            BasicMethods.assert(_updateBalance(walletId, LedgerStruct.GasAddress, transactionValue.value, getStandardMathOperation().add), "updateBalance failed");
+            BasicMethods.assert(_updateBalance(walletId, LedgerStruct.GasAddress, value, getStandardMathOperation().add), "updateBalance failed");
 
-            DepositToWallet(walletId, LedgerStruct.GasAddress, transactionValue.value);
+            DepositToWallet(walletId, LedgerStruct.GasAddress, value);
             return true;
         }
 

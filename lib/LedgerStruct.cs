@@ -1,6 +1,7 @@
 ﻿using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
 using Neo.SmartContract.Framework.Services.System;
+using System.Collections.Generic;
 using System.Numerics;
 
 public class LedgerStruct
@@ -180,52 +181,36 @@ public class LedgerStruct
         return true;
     }
 
-    public static readonly byte[] NeoID = Neo.SmartContract.Framework.Helper.HexToBytes("c56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b").Reverse();
-    public static readonly byte[] GasID = Neo.SmartContract.Framework.Helper.HexToBytes("602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7").Reverse();
+    public static readonly byte[] NeoID = Neo.SmartContract.Framework.Helper.HexToBytes("9b7cffdaa674beae0f930ebe6085af9093e5fe56b34a5c220ccdcf6efc336fc5");
+    public static readonly byte[] GasID = Neo.SmartContract.Framework.Helper.HexToBytes("e72d286979ee6cb1b7e65dfddfb2e384100b8d148e7758de42e4168b71792c60");
     public static readonly byte[] NeoAddress = new byte[20] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     public static readonly byte[] GasAddress = new byte[20] { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-    public struct TransactionValue
-    {
-        public byte tokenType;
-        public BigInteger value;
-        public byte[] receiver;
-    }
-
-    public static TransactionValue getTransactionValue(byte tokenType)
+    public static BigInteger getTransactionValue(byte tokenType, byte[] receiver)
     {
         PbEntity.TokenType token = PbEntity.getStandardTokenType();
         Transaction tx = ExecutionEngine.ScriptContainer as Transaction;
         TransactionOutput[] outputs = tx.GetOutputs();
-        if (outputs.Length == 0)
+        BigInteger result = 0;
+        foreach (TransactionOutput output in outputs)
         {
-            return new TransactionValue()
+            byte[] scriptHash = output.ScriptHash;
+            if (!scriptHash.Equals(receiver)) continue;
+            byte[] assetid = output.AssetId;
+            //Temperately only support NEO and GAS
+            byte type = token.INVALID;
+            if (assetid.Equals(NeoID))
             {
-                tokenType = tokenType,
-                value = 0,
-                receiver = ExecutionEngine.ExecutingScriptHash
-            };
+                type = token.NEO;
+            }
+            else if (assetid.Equals(GasID))
+            {
+                type = token.GAS;
+            }
+            if (tokenType != type) continue;
+            result += output.Value;
         }
-        BasicMethods.assert(outputs.Length == 1, "Invalid outputs length");
-        byte[] assetid = outputs[0].AssetId;
-        //Temperately only support NEO and GAS
-        byte type = token.INVALID;
-        if (assetid.Equals(NeoID))
-        {
-            type = token.NEO;
-        }
-        else if (assetid.Equals(GasID))
-        {
-            type = token.GAS;
-        }
-        BasicMethods.assert(tokenType == type, "Unmatch token type");
-        TransactionValue transactionValue = new TransactionValue()
-        {
-            tokenType = type,
-            value = outputs[0].Value,
-            receiver = outputs[0].ScriptHash
-        };
-        return transactionValue;
+        return result;
     }
 
     public struct BalanceMap

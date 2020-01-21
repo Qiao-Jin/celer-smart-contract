@@ -149,13 +149,14 @@ public class LedgerOperation : SmartContract
         BasicMethods.assert(Blockchain.GetHeight() <= channelInitializer.openDeadline, "Open deadline passed");
 
         PbEntity.TokenInfo token = tokenDistribution.token;
-        LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.tokenType);
-        BigInteger _value = transactionValue.value;
+        BigInteger _value = LedgerStruct.getTransactionValue(token.tokenType, getCelerWalletInner(_self));
         BasicMethods.assert(_value >= 0, "value is illegal");
 
         PbEntity.AccountAmtPair accountAmtPair0 = accountAmtPair[0];
         PbEntity.AccountAmtPair accountAmtPair1 = accountAmtPair[1];
         BigInteger[] amounts = new BigInteger[] { accountAmtPair0.amt, accountAmtPair1.amt };
+        BasicMethods.assert(amounts[0] >= 0, "amount0 is less than 0");
+        BasicMethods.assert(amounts[1] >= 0, "amount1 is less than 0");
         byte[][] peerAddrs = new byte[][] { accountAmtPair0.account, accountAmtPair1.account };
         byte[] peerAddr0 = peerAddrs[0];
         byte[] peerAddr1 = peerAddrs[1];
@@ -190,36 +191,30 @@ public class LedgerOperation : SmartContract
         }
 
         //Pending debugging
-        Runtime.Notify("9");
         // if total deposit is larger than 0
         if (_balanceLimited)
             BasicMethods.assert(amtSum <= LedgerBalanceLimit.getBalanceLimitInner(token.address), "Balance exceeds limit");
-        Runtime.Notify("10");
         PbEntity.TokenType tokenType = PbEntity.getStandardTokenType();
         if (token.tokenType == tokenType.NEO || token.tokenType == tokenType.GAS)
         {
             byte msgValueReceiver = channelInitializer.msgValueReceiver;
-            Runtime.Notify("11");
             BasicMethods.assert(msgValueReceiver == 0 || msgValueReceiver == 1, "Illegal msgValueReceiver");
             BasicMethods.assert(_value == amounts[msgValueReceiver] + amounts[1 - msgValueReceiver], "value mismatch");
             if (_value > 0)
             {
                 if (token.tokenType == tokenType.NEO)
                 {
-                    Runtime.Notify("12");
                     NEP5Contract dyncall = (NEP5Contract)celerWallet.ToDelegate();
                     byte[] channelId = (byte[])dyncall("depositneo", new object[] { channelInfo.channelId });
                 }
                 else
                 {
-                    Runtime.Notify("13");
                     NEP5Contract dyncall = (NEP5Contract)celerWallet.ToDelegate();
                     byte[] channelId = (byte[])dyncall("depositgas", new object[] { channelInfo.channelId });
                 }
             }
         } else
         {
-            Runtime.Notify("14");
             BasicMethods.assert(false, "Unsupported token type");
         }
         
@@ -235,8 +230,7 @@ public class LedgerOperation : SmartContract
         LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
         PbEntity.TokenInfo token = c.token;
         PbEntity.TokenType tokenType = PbEntity.getStandardTokenType();
-        LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.tokenType);
-        BigInteger _value = transactionValue.value;
+        BigInteger _value = LedgerStruct.getTransactionValue(token.tokenType, getCelerWalletInner(_self));
         BasicMethods.assert(_value >= 0, "value is illegal");
         BasicMethods.assert(_value == _transferFromAmount, "value is not same as announced");
 

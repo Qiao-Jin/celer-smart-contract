@@ -1,6 +1,5 @@
 ﻿using Neo.SmartContract.Framework;
 using Neo.SmartContract.Framework.Services.Neo;
-using Neo.SmartContract.Framework.Services.System;
 using System;
 using System.ComponentModel;
 using System.Numerics;
@@ -355,8 +354,7 @@ namespace CelerLedgerMock
             LedgerStruct.Channel c = LedgerStruct.getChannelMap(_channelId);
             c.disputeTimeout = _disputeTimeout;
             LedgerStruct.ChannelStatus channelStatus = LedgerStruct.getStandardChannelStatus();
-            LedgerStruct.Ledger ledger = getLedger();
-            c = LedgerOperation._updateChannelStatus(ledger, c, channelStatus.Operable);
+            c = LedgerOperation._updateChannelStatus(c, channelStatus.Operable);
             PbEntity.TokenInfo token = new PbEntity.TokenInfo()
             {
                 address = _tokenAddress,
@@ -418,10 +416,8 @@ namespace CelerLedgerMock
             byte rid = LedgerChannel._getPeerId(c, _receiver);
             BasicMethods.assert(rid == 0 || rid == 1, "rid illegal");
             PbEntity.TokenInfo token = c.token;
-            LedgerStruct.TransactionValue transactionValue = LedgerStruct.getTransactionValue(token.tokenType);
-            BasicMethods.assert(ExecutionEngine.ExecutingScriptHash.Equals(transactionValue.receiver), "token not sent to this smart contract");
-            BasicMethods.assert(transactionValue.tokenType == token.tokenType, "Token type doesn't match");
-            BigInteger amount = _transferFromAmount + transactionValue.value;
+            BigInteger value = LedgerStruct.getTransactionValue(token.tokenType, getCelerWallet());
+            BigInteger amount = _transferFromAmount + value;
             LedgerStruct.PeerProfile[] peerProfiles = c.peerProfiles;
             LedgerStruct.PeerProfile peerProfile = peerProfiles[rid];
             peerProfile.deposit = peerProfile.deposit + amount;

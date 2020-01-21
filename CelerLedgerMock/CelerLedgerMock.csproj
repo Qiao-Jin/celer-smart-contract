@@ -55,9 +55,6 @@
     <Compile Include="..\lib\LedgerChannel.cs">
       <Link>LedgerChannel.cs</Link>
     </Compile>
-    <Compile Include="..\lib\LedgerMigrate.cs">
-      <Link>LedgerMigrate.cs</Link>
-    </Compile>
     <Compile Include="..\lib\LedgerOperation.cs">
       <Link>LedgerOperation.cs</Link>
     </Compile>
