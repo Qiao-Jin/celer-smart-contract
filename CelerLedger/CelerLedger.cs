@@ -26,7 +26,6 @@ namespace CelerLedger
         {
             if (Runtime.Trigger == TriggerType.Verification)
             {
-                //Pending verification
                 return true;
             }
             else if (Runtime.Trigger == TriggerType.Application)

@@ -73,7 +73,9 @@ namespace CelerWallet
         {
             if (Runtime.Trigger == TriggerType.Verification)//取钱才会涉及这里
             {
-                Transaction tx = ExecutionEngine.ScriptContainer as Transaction;
+                if (method.Equals("withdraw")) return true;
+                else return false;
+                /*Transaction tx = ExecutionEngine.ScriptContainer as Transaction;
                 TransactionAttribute[] attributes = tx.GetAttributes();
                 byte[] walletid = null;
                 foreach (TransactionAttribute attribute in attributes)
@@ -90,7 +92,7 @@ namespace CelerWallet
 
                 if (tokenValues[0] > getBalance(walletid, LedgerStruct.NeoAddress)) return false;
                 if (tokenValues[1] > getBalance(walletid, LedgerStruct.GasAddress)) return false;
-                return true;
+                return true;*/
             }
             else if (Runtime.Trigger == TriggerType.VerificationR)
             {
@@ -323,7 +325,6 @@ namespace CelerWallet
         }*/
 
         [DisplayName("withdraw")]
-        //需要重写
         public static object withdraw(byte[] walletId, byte[] tokenAddress, byte[] receiver, BigInteger amount, byte[] callingScriptHash)
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId illegal, not byte32");
@@ -334,11 +335,11 @@ namespace CelerWallet
             BigInteger[] tokenValues = getTokenWithdraw();
             if (tokenAddress.Equals(LedgerStruct.NeoAddress))
             {
-                BasicMethods.assert(amount >= tokenValues[0], "amount is less than zero");
+                BasicMethods.assert(amount >= tokenValues[0], "withdrawn Neo is more than declared");
             }
-            else if (tokenAddress.Equals(LedgerStruct.NeoAddress))
+            else if (tokenAddress.Equals(LedgerStruct.GasAddress))
             {
-                BasicMethods.assert(amount >= tokenValues[1], "amount is less than zero");
+                BasicMethods.assert(amount >= tokenValues[1], "withdrawn Gas is more than declared");
             }
 
             _whenNotPaused();

@@ -190,7 +190,6 @@ public class LedgerOperation : SmartContract
             return false;
         }
 
-        //Pending debugging
         // if total deposit is larger than 0
         if (_balanceLimited)
             BasicMethods.assert(amtSum <= LedgerBalanceLimit.getBalanceLimitInner(token.address), "Balance exceeds limit");
