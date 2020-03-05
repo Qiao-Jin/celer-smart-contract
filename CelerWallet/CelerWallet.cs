@@ -147,7 +147,7 @@ namespace CelerWallet
                     byte[] walletId = (byte[])args[0];
                     return depositGAS(walletId);
                 }
-                /*if (method == "depositNEP5")
+                if (method == "depositNEP5")
                 {
                     BasicMethods.assert(args.Length == 4, "params length error");
                     byte[] invoker = (byte[])args[0];
@@ -155,7 +155,7 @@ namespace CelerWallet
                     byte[] tokenAddress = (byte[])args[2];
                     BigInteger amount = (BigInteger)args[3];
                     return depositNEP5(invoker, walletId, tokenAddress, amount);
-                }*/
+                }
                 if (method == "withdraw")
                 {
                     BasicMethods.assert(args.Length == 4, "params length error");
@@ -304,7 +304,7 @@ namespace CelerWallet
             return true;
         }
 
-        /*[DisplayName("depositNEP5")]
+        [DisplayName("depositNEP5")]
         public static object depositNEP5(byte[] invoker, byte[] walletId, byte[] tokenAddress, BigInteger amount)
         {
             BasicMethods.assert(Runtime.CheckWitness(invoker), "CheckWitness failed");
@@ -314,7 +314,7 @@ namespace CelerWallet
 
             _whenNotPaused();
 
-            BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, mathOperation.add), "updateBalance failed");
+            BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, getStandardMathOperation().add), "updateBalance failed");
             NEP5Contract dyncall = (NEP5Contract)tokenAddress.ToDelegate();
             Object[] args = new object[] { invoker, ExecutionEngine.ExecutingScriptHash, amount };
             bool res = (bool)dyncall("transfer", args);
@@ -322,7 +322,7 @@ namespace CelerWallet
 
             DepositToWallet(walletId, tokenAddress, amount);
             return true;
-        }*/
+        }
 
         [DisplayName("withdraw")]
         public static object withdraw(byte[] walletId, byte[] tokenAddress, byte[] receiver, BigInteger amount, byte[] callingScriptHash)
@@ -438,11 +438,11 @@ namespace CelerWallet
             BigInteger[] tokenValues = getTokenWithdraw();
             if (tokenAddress.Equals(LedgerStruct.NeoAddress))
             {
-                BasicMethods.assert(amount >= tokenValues[0], "amount is less than zero");
+                BasicMethods.assert(amount >= tokenValues[0], "withdrawn Neo is more than declared");
             }
-            else if (tokenAddress.Equals(LedgerStruct.NeoAddress))
+            else if (tokenAddress.Equals(LedgerStruct.GasAddress))
             {
-                BasicMethods.assert(amount >= tokenValues[1], "amount is less than zero");
+                BasicMethods.assert(amount >= tokenValues[1], "withdrawn Gas is more than declared");
             }
 
             BasicMethods.assert(_withdrawToken(tokenAddress, receiver, amount), "withdrawToken failed");
