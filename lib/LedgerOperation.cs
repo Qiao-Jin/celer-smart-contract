@@ -204,13 +204,22 @@ public class LedgerOperation : SmartContract
                 if (token.tokenType == tokenType.NEO)
                 {
                     NEP5Contract dyncall = (NEP5Contract)celerWallet.ToDelegate();
-                    byte[] channelId = (byte[])dyncall("depositneo", new object[] { channelInfo.channelId });
+                    BasicMethods.assert((bool)dyncall("depositneo", new object[] { channelInfo.channelId }), "depositneo failed");
                 }
                 else
                 {
                     NEP5Contract dyncall = (NEP5Contract)celerWallet.ToDelegate();
-                    byte[] channelId = (byte[])dyncall("depositgas", new object[] { channelInfo.channelId });
+                    BasicMethods.assert((bool)dyncall("depositgas", new object[] { channelInfo.channelId }), "depositgas failed");
                 }
+            }
+        } else if (token.tokenType == tokenType.NEP5)
+        {
+            BasicMethods.assert(_value == 0, "msg.value is not 0");
+            for (int i = 0; i < 2; i++)
+            {
+                if (amounts[i] == 0) { continue; }
+                NEP5Contract dyncall = (NEP5Contract)celerWallet.ToDelegate();
+                BasicMethods.assert((bool)dyncall("depositNEP5", new object[] { peerAddrs[i], channelInfo.channelId, token.address, amounts[i] }), "depositNEP5 failed");
             }
         } else
         {
@@ -221,8 +230,10 @@ public class LedgerOperation : SmartContract
     }
 
     [DisplayName("depositInner")]
-    public static bool depositInner(LedgerStruct.Ledger _self, byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, bool _balanceLimited)
+    public static bool depositInner(byte[] _sender, LedgerStruct.Ledger _self, byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount, bool _balanceLimited)
     {
+        BasicMethods.assert(BasicMethods._isLegalAddress(_sender), "_sender is illegal");
+        BasicMethods.assert(Runtime.CheckWitness(_sender), "sender check witness failed");
         BasicMethods.assert(BasicMethods._isByte32(_channelId), "_channelId is illegal");
         BasicMethods.assert(BasicMethods._isLegalAddress(_receiver), "_receiver is illegal");
 
@@ -238,14 +249,21 @@ public class LedgerOperation : SmartContract
         if (token.tokenType == tokenType.NEO)
         {
             NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
-            dyncall("depositneo", new object[] { _channelId });
+            BasicMethods.assert((bool)dyncall("depositneo", new object[] { _channelId }), "depositnep failed");
         } else if (token.tokenType == tokenType.GAS)
         {
             NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
-            dyncall("depositgas", new object[] { _channelId });
-        } else
+            BasicMethods.assert((bool)dyncall("depositgas", new object[] { _channelId }), "depositgas failed");
+        } else if (token.tokenType == tokenType.NEP5)
         {
-            BasicMethods.assert(false, "Unsupported token type");
+            NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
+            BasicMethods.assert((bool)dyncall("depositNEP5", new object[] { _channelId }), "depositNEP5 failed");
+        }
+        else
+        {
+            BasicMethods.assert(_value == 0, "msg.value is not 0");
+            NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
+            BasicMethods.assert((bool)dyncall("depositNEP5", new object[] { _sender, _channelId, token.address, _transferFromAmount }), "depositNEP5 failed");
         }
         return true;
     }

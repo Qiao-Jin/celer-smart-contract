@@ -63,19 +63,21 @@ namespace CelerLedger
                 }
                 if (operation == "deposit")
                 {
-                    BasicMethods.assert(args.Length == 3, "deposit parameter error");
-                    byte[] _channelId = (byte[])args[0];
-                    byte[] _receiver = (byte[])args[1];
-                    BigInteger _transferFromAmount = (BigInteger)args[2];
-                    return deposit(_channelId, _receiver, _transferFromAmount);
+                    BasicMethods.assert(args.Length == 4, "deposit parameter error");
+                    byte[] _sender = (byte[])args[0];
+                    byte[] _channelId = (byte[])args[1];
+                    byte[] _receiver = (byte[])args[2];
+                    BigInteger _transferFromAmount = (BigInteger)args[3];
+                    return deposit(_sender, _channelId, _receiver, _transferFromAmount);
                 }
                 if (operation == "depositInBatch")
                 {
-                    BasicMethods.assert(args.Length == 3, "depositInBatch parameter error");
-                    byte[][] _channelIds = (byte[][])args[0];
-                    byte[][] _receivers = (byte[][])args[1];
-                    BigInteger[] _transferFromAmounts = (BigInteger[])args[2];
-                    return depositInBatch(_channelIds, _receivers, _transferFromAmounts);
+                    BasicMethods.assert(args.Length == 4, "depositInBatch parameter error");
+                    byte[][] _sender = (byte[][])args[0];
+                    byte[][] _channelIds = (byte[][])args[1];
+                    byte[][] _receivers = (byte[][])args[2];
+                    BigInteger[] _transferFromAmounts = (BigInteger[])args[3];
+                    return depositInBatch(_sender, _channelIds, _receivers, _transferFromAmounts);
                 }
                 if (operation == "snapshotStates")
                 {
@@ -337,24 +339,24 @@ namespace CelerLedger
         }
 
         [DisplayName("deposit")]
-        public static bool deposit(byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount)
+        public static bool deposit(byte[] _sender, byte[] _channelId, byte[] _receiver, BigInteger _transferFromAmount)
         {
             LedgerStruct.Ledger ledger = getLedger();
-            LedgerOperation.depositInner(ledger, _channelId, _receiver, _transferFromAmount, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
+            LedgerOperation.depositInner(_sender, ledger, _channelId, _receiver, _transferFromAmount, LedgerBalanceLimit.getBalanceLimitsEnabledInner());
             return true;
         }
 
         [DisplayName("depositInBatch")]
-        public static bool depositInBatch(byte[][] _channelIds, byte[][] _receivers, BigInteger[] _transferFromAmounts)
+        public static bool depositInBatch(byte[][] _senders, byte[][] _channelIds, byte[][] _receivers, BigInteger[] _transferFromAmounts)
         {
             BasicMethods.assert(
-                _channelIds.Length == _receivers.Length && _receivers.Length == _transferFromAmounts.Length,
+                _channelIds.Length == _receivers.Length && _receivers.Length == _transferFromAmounts.Length && _transferFromAmounts.Length == _senders.Length,
                 "Lengths do not match"
                 );
             bool balanceLimited = LedgerBalanceLimit.getBalanceLimitsEnabledInner();
             for (int i = 0; i < _channelIds.Length; i++)
             {
-                LedgerOperation.depositInner(getLedger(), _channelIds[i], _receivers[i], _transferFromAmounts[i], balanceLimited);
+                LedgerOperation.depositInner(_senders[i], getLedger(), _channelIds[i], _receivers[i], _transferFromAmounts[i], balanceLimited);
             }
             return true;
         }
