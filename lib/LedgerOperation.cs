@@ -242,16 +242,17 @@ public class LedgerOperation : SmartContract
         PbEntity.TokenType tokenType = PbEntity.getStandardTokenType();
         BigInteger _value = LedgerStruct.getTransactionValue(token.tokenType, getCelerWalletInner(_self));
         BasicMethods.assert(_value >= 0, "value is illegal");
-        BasicMethods.assert(_value == _transferFromAmount, "value is not same as announced");
 
         _addDeposit(_self, _channelId, _receiver, _value, _balanceLimited);
         byte[] _w = _self.celerWallet;
         if (token.tokenType == tokenType.NEO)
         {
+            BasicMethods.assert(_value == _transferFromAmount, "value is not same as announced");
             NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
             BasicMethods.assert((bool)dyncall("depositneo", new object[] { _channelId }), "depositnep failed");
         } else if (token.tokenType == tokenType.GAS)
         {
+            BasicMethods.assert(_value == _transferFromAmount, "value is not same as announced");
             NEP5Contract dyncall = (NEP5Contract)_w.ToDelegate();
             BasicMethods.assert((bool)dyncall("depositgas", new object[] { _channelId }), "depositgas failed");
         } else if (token.tokenType == tokenType.NEP5)
