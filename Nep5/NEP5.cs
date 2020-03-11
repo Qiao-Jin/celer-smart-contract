@@ -3,6 +3,8 @@ using Neo.SmartContract.Framework.Services.Neo;
 using System;
 using System.Numerics;
 using System.ComponentModel;
+using Neo.SmartContract.Framework.Services.System;
+
 namespace NEP5
 {
     public class NEP5 : SmartContract
@@ -63,13 +65,15 @@ namespace NEP5
                     byte[] from = (byte[])args[0];
                     byte[] to = (byte[])args[1];
                     BigInteger amount = (BigInteger)args[2];
-                    return transfer(from, to, amount);
+                    byte[] callingScriptHash = ExecutionEngine.CallingScriptHash;
+                    return transfer(from, to, amount, callingScriptHash);
                 }
                 if (operation == "transferMulti")
                 {
                     BasicMethods.assert(args.Length == 1, "NEP5 parameter error");
                     byte[] states = (byte[])args[0];
-                    return transferMulti(states);
+                    byte[] callingScriptHash = ExecutionEngine.CallingScriptHash;
+                    return transferMulti(states, callingScriptHash);
                 }
             }
             return false;
@@ -110,12 +114,12 @@ namespace NEP5
         }
 
         [DisplayName("transfer")]
-        public static object transfer(byte[] from, byte[] to, BigInteger amount)
+        public static object transfer(byte[] from, byte[] to, BigInteger amount, byte[] callingScriptHash)
         {
             BasicMethods.assert(BasicMethods._isLegalAddress(from), "from address is illegal");
             BasicMethods.assert(BasicMethods._isLegalAddress(to), "to address is illegal");
             BasicMethods.assert(amount >= 0, "amount is less than 0");
-            BasicMethods.assert(Runtime.CheckWitness(from), "CheckWitness failed");
+            BasicMethods.assert(Runtime.CheckWitness(from) || callingScriptHash.Equals(from), "CheckWitness failed");
 
             BigInteger fromBalance = balanceOf(from);
             BasicMethods.assert(fromBalance >= amount, "from address not enough balance");
@@ -134,13 +138,13 @@ namespace NEP5
             public BigInteger amount;
         }
         [DisplayName("transferMulti")]
-        public static object transferMulti(byte[] args)
+        public static object transferMulti(byte[] args, byte[] callingScriptHash)
         {
             State[] states = (State[])Neo.SmartContract.Framework.Helper.Deserialize(args);
             for (var i = 0; i < args.Length; i++)
             {
                 State state = states[i];
-                BasicMethods.assert((bool)transfer(state.from, state.to, state.amount), "transfer failed");
+                BasicMethods.assert((bool)transfer(state.from, state.to, state.amount, callingScriptHash), "transfer failed");
             }
             return true;
         }

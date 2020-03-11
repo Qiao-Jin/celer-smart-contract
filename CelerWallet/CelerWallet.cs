@@ -252,7 +252,6 @@ namespace CelerWallet
         public static byte[] create(byte[] invoker, byte[][] owners, byte[] theOperator, byte[] nonce)
         {
             BasicMethods.assert(BasicMethods._isLegalAddresses(owners), "owners addresses are not byte20");
-            BasicMethods.assert(BasicMethods._isLegalAddress(theOperator), "the operator is not byte20");
             //TODO: no need to check the nonce byte[] length
 
             _whenNotPaused();
@@ -278,9 +277,8 @@ namespace CelerWallet
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
             PbEntity.TokenType token = PbEntity.getStandardTokenType();
-            BigInteger value = LedgerStruct.getTransactionValue(token.NEO, ExecutionEngine.EntryScriptHash);
+            BigInteger value = LedgerStruct.getTransactionValue(token.NEO, ExecutionEngine.ExecutingScriptHash);
             BasicMethods.assert(value >= 0, "amount is less than zero");
-
             _whenNotPaused();
             BasicMethods.assert(_updateBalance(walletId, LedgerStruct.NeoAddress, value, getStandardMathOperation().add), "updateBalance failed");
 
@@ -293,9 +291,8 @@ namespace CelerWallet
         {
             BasicMethods.assert(BasicMethods._isByte32(walletId), "walletId is not byte32");
             PbEntity.TokenType token = PbEntity.getStandardTokenType();
-            BigInteger value = LedgerStruct.getTransactionValue(token.GAS, ExecutionEngine.EntryScriptHash);
+            BigInteger value = LedgerStruct.getTransactionValue(token.GAS, ExecutionEngine.ExecutingScriptHash);
             BasicMethods.assert(value >= 0, "amount is less than zero");
-
             _whenNotPaused();
 
             BasicMethods.assert(_updateBalance(walletId, LedgerStruct.GasAddress, value, getStandardMathOperation().add), "updateBalance failed");
@@ -315,9 +312,9 @@ namespace CelerWallet
             _whenNotPaused();
 
             BasicMethods.assert(_updateBalance(walletId, tokenAddress, amount, getStandardMathOperation().add), "updateBalance failed");
+            byte[] thisContract = ExecutionEngine.ExecutingScriptHash;
             NEP5Contract dyncall = (NEP5Contract)tokenAddress.ToDelegate();
-            Object[] args = new object[] { invoker, ExecutionEngine.ExecutingScriptHash, amount };
-            bool res = (bool)dyncall("transfer", args);
+            bool res = (bool)dyncall("transfer", new object[] { invoker, thisContract, amount });
             BasicMethods.assert(res, "transfer NEP5 tokens failed");
 
             DepositToWallet(walletId, tokenAddress, amount);
@@ -549,8 +546,9 @@ namespace CelerWallet
             {
                 return true;
             }
+            byte[] thisContract = ExecutionEngine.ExecutingScriptHash;
             NEP5Contract dyncall = (NEP5Contract)_tokenAddress.ToDelegate();
-            bool res = (bool)dyncall("transfer", new object[] { ExecutionEngine.ExecutingScriptHash, _receiver, _amount });
+            bool res = (bool)dyncall("transfer", new object[] { thisContract, _receiver, _amount });
             return res;
         }
 
